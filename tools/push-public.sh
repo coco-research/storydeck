@@ -4,9 +4,12 @@
 # Safety: aborts if anything private is tracked. The private/ overlay, DB files,
 # backups, and .env are gitignored and must never be committed.
 #
-# Auth: pushes with the rijulkalra2000 GitHub token (it has write access; the
-# active McKinsey account rijul-mck does not). The global active gh account is
-# NOT changed — the token is used only for this push.
+# Auth: pushes with a token that has write access to the repo. Prefers the
+# rijulkalra2000 token (keeps the public identity fully separate from McKinsey);
+# falls back to rijul-mck, which is now a collaborator. The global active gh
+# account is NOT changed — the token is used only for this push. The committer
+# identity is always the generic "StoryDeck Dev" so no personal/McKinsey email
+# ends up in public commit metadata regardless of which token pushes.
 #
 # Usage: ./tools/push-public.sh "commit message"
 
@@ -35,12 +38,19 @@ else
   echo "committed: $MSG"
 fi
 
-# ── Push with the pushing account's token (no active-account change) ─────────
+# ── Push with a write-capable token (no active-account change) ───────────────
+# Prefer rijulkalra2000; fall back to rijul-mck (now a collaborator).
 TOKEN="$(gh auth token --user rijulkalra2000 2>/dev/null || true)"
+PUSH_AS="rijulkalra2000"
 if [ -z "$TOKEN" ]; then
-  echo "ABORT: no token for rijulkalra2000 (gh auth login as that user)." >&2
+  TOKEN="$(gh auth token --user rijul-mck 2>/dev/null || true)"
+  PUSH_AS="rijul-mck"
+fi
+if [ -z "$TOKEN" ]; then
+  echo "ABORT: no usable token (gh auth login as rijulkalra2000 or rijul-mck)." >&2
   exit 1
 fi
+echo "auth: pushing via ${PUSH_AS} token (committer identity stays generic)"
 URL="https://x-access-token:${TOKEN}@github.com/${REPO}.git"
 
 # Fast-forward if the remote moved; keep our files on any conflict.
