@@ -47,4 +47,7 @@ export function loadEnv(file = join(ROOT, '.env')) {
 }
 
 // Auto-load on import so importing this module has the side effect of populating env.
-loadEnv();
+// The private overlay (private/.env) takes precedence over a root .env; neither
+// overwrites variables already set in the real environment.
+loadEnv(join(ROOT, 'private', '.env'));
+loadEnv(join(ROOT, '.env'));

@@ -43,14 +43,27 @@ npm start                   # http://127.0.0.1:4321
 
 The server binds to `127.0.0.1` only — it is not reachable from the network.
 
-## Data & seeding
+## Data & seeding — public build vs. private overlay
 
-- On first run with an empty database, StoryDeck seeds from
-  **`data/seed.sample.json`** (a small demo board) so you have something to look at.
-- Your real board is stored in `data/todo.db` (gitignored).
-- If you keep a private **`data/seed.json`**, it takes precedence over the sample
-  for seeding. `seed.json`, `data/*.db`, and `backups/` are all gitignored so your
-  real data never gets committed.
+StoryDeck keeps one codebase but walls off real data with a **`private/` overlay**:
+
+- **Public build (this repo):** seeds from the fictional **`data/seed.sample.json`**.
+  A fresh clone runs with demo data and commits nothing sensitive.
+- **Private overlay (`private/`, gitignored):** if a `private/` folder exists, the
+  app reads and writes there instead — `private/data/seed.json` (your real seed),
+  `private/data/todo.db` (live DB), `private/backups/`, and `private/.env` (your key
+  + `BOARD_TITLE`). Nothing under `private/` is ever committed or pushed.
+
+Because both share the *same code*, the public and private versions are always in
+sync by construction — only the data differs.
+
+```
+ToDo/
+  web/                 # frontend assets served by the server
+  src/                 # server, db, ai, env
+  data/seed.sample.json  # PUBLIC demo seed (committed)
+  private/             # PRIVATE overlay (gitignored) — real data, DB, backups, .env
+```
 
 ## AI assistant (optional)
 

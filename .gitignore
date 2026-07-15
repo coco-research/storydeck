@@ -5,15 +5,19 @@
 # dependencies
 node_modules/
 
-# local data & artifacts
+# ── PRIVATE OVERLAY ─────────────────────────────────────────────
+# The McKinsey / first-user instance. Real seed, live DB, backups, and
+# secrets live here and must NEVER be pushed. The public repo ships only
+# the fictional data/seed.sample.json.
+private/
+
+# local data & artifacts (public build creates these at runtime)
 data/*.db
 data/*.db-*
-.ai-scratch/
-screenshots/
-
-# live board data — McKinsey-sensitive, keep on-device only
 backups/
 data/seed.json
+.ai-scratch/
+screenshots/
 
 # OS
 .DS_Store

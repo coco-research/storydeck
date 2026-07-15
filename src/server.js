@@ -34,7 +34,7 @@ import { runAssistant, AIError } from './ai/agent.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
-const PUBLIC_DIR = join(ROOT, 'public');
+const WEB_DIR = join(ROOT, 'web'); // static frontend assets
 
 const HOST = '127.0.0.1'; // loopback only — never 0.0.0.0
 const PORT = Number(process.env.PORT) || 4321;
@@ -186,8 +186,8 @@ async function serveStatic(res, path) {
   let rel = path === '/' ? '/index.html' : path;
   // Prevent path traversal.
   const safe = normalize(rel).replace(/^(\.\.[/\\])+/, '');
-  const file = join(PUBLIC_DIR, safe);
-  if (!file.startsWith(PUBLIC_DIR) || !existsSync(file)) {
+  const file = join(WEB_DIR, safe);
+  if (!file.startsWith(WEB_DIR) || !existsSync(file)) {
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Not found');
     return;
@@ -238,4 +238,4 @@ if (isMain) {
   });
 }
 
-export { HOST, PORT, PUBLIC_DIR, isLoopback };
+export { HOST, PORT, WEB_DIR, isLoopback };

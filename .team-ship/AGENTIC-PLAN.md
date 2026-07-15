@@ -7,13 +7,16 @@ chats), give the chat a **clear** control so it isn't an endless screen, and lay
 
 ## Public-version discipline (READ EVERY TICK) — see `.team-ship/PUBLIC-VERSION.md`
 This repo is the **public** StoryDeck product; this laptop is the **private first-user**
-instance. Same code, different data. Every tick MUST keep the repo public-safe:
-- Never commit real data (`data/seed.json`, `data/*.db`, `backups/`) or secrets (`.env`).
+instance via a gitignored `private/` overlay. Same code, different data → always in
+sync. Frontend assets live in `web/` (was `public/`). Every tick MUST:
+- Never commit the `private/` overlay, `data/*.db`, root `backups/`, or `.env`/secrets.
 - Build features generically; example data goes in `data/seed.sample.json` (fictional).
 - Tests seed from the sample so a clean clone is green with zero private data.
 - Branding is generic ("StoryDeck"), configurable via `BOARD_TITLE`; no real names/vendors.
-- Push to `coco-research/storydeck` only when explicitly asked, after verifying
-  `git ls-files | grep -E 'seed\.json|\.db|backups/|\.env$'` is empty.
+- **Commit + push at the end of EACH change** to `coco-research/storydeck` (main),
+  after `node --test` is green AND this returns nothing:
+  `git ls-files | grep -E 'private/|seed\.json$|\.db$|backups/|\.env$'`.
+  Push with the `rijulkalra2000` token for this repo only; keep active gh = `rijul-mck`.
 
 ## Delivery vehicle — Electron (not Tauri)
 This app is an **Electron** desktop app: `main.js` boots the local `node:sqlite` server

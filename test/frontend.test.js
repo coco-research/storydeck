@@ -10,7 +10,7 @@ const ROOT = join(__dirname, '..');
 // Build a sandbox that runs the frontend <script> against a mocked DOM,
 // then exposes internal functions for assertions.
 function buildApp() {
-  const html = readFileSync(join(ROOT, 'public', 'index.html'), 'utf8');
+  const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
   const script = html.match(/<script>([\s\S]*)<\/script>/)[1];
 
   const nodes = {};
@@ -70,12 +70,9 @@ function buildApp() {
   );
 }
 
-// Prefer the private on-device seed if present, else the committed public sample
-// so the suite runs in a clean clone with no real data.
-const seedFile = existsSync(join(ROOT, 'data', 'seed.json'))
-  ? join(ROOT, 'data', 'seed.json')
-  : join(ROOT, 'data', 'seed.sample.json');
-const seed = JSON.parse(readFileSync(seedFile, 'utf8'))
+// Always use the committed PUBLIC sample seed so the suite is deterministic and
+// public-safe (never depends on the private overlay's real data).
+const seed = JSON.parse(readFileSync(join(ROOT, 'data', 'seed.sample.json'), 'utf8'))
   .map((s) => ({ ...s, comments: Array.isArray(s.comments) ? s.comments : [] }));
 
 test('statePatch maps sprint states to API patches', () => {
@@ -107,7 +104,7 @@ test('getProjects/getEpics include core + custom epics from tasks', () => {
   const projects = app.getProjects();
   assert.ok(projects.includes('All'));
   assert.ok(projects.includes('Urgent'));
-  ['Coco', 'Kharon', 'CR07', 'AB1'].forEach((e) => assert.ok(projects.includes(e), `missing ${e}`));
+  ['Website', 'Mobile', 'GitHub', 'Personal'].forEach((e) => assert.ok(projects.includes(e), `missing ${e}`));
   const epics = app.getEpics();
   assert.ok(!epics.includes('All') && !epics.includes('Urgent'));
 });
@@ -148,10 +145,10 @@ test('render draws all four columns and every seeded story', () => {
   app.render();
   const html = app.taskListHTML();
   ['To Do', 'In Progress', 'Blocked', 'Done'].forEach((c) => assert.ok(html.includes(c), `missing column ${c}`));
-  // 71 cards rendered.
+  // Every sample story renders as a card.
   const cardCount = (html.match(/class="task-card/g) || []).length;
-  assert.equal(cardCount, 71);
-  ['Coco Fusion', 'Review repo: nanoGPT', 'INC8935086 - AuditBoard Sync for Mac'].forEach((t) =>
+  assert.equal(cardCount, 14);
+  ['Ship push notifications', 'Set up the CI workflow', 'Vendor invoice'].forEach((t) =>
     assert.ok(html.includes(t), `missing task ${t}`)
   );
   assert.match(app.metaText(), /open stories/);
@@ -161,11 +158,11 @@ test('search narrows the rendered board', () => {
   const app = buildApp();
   app.setActiveFilter('All');
   app.setTasks(seed);
-  app.setSearch('nanoGPT');
+  app.setSearch('push notifications');
   app.render();
   const html = app.taskListHTML();
-  assert.ok(html.includes('Review repo: nanoGPT'));
-  assert.ok(!html.includes('Coco Fusion'));
+  assert.ok(html.includes('Ship push notifications'));
+  assert.ok(!html.includes('Design new landing page hero'));
   const cardCount = (html.match(/class="task-card/g) || []).length;
   assert.equal(cardCount, 1);
 });
@@ -188,7 +185,7 @@ test('compact density renders the flat list view (not the board)', () => {
 });
 
 test('list view has the preview columns: id/status/story/epic/pts', () => {
-  const html = readFileSync(join(ROOT, 'public', 'index.html'), 'utf8');
+  const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
   const css = html.match(/<style>([\s\S]*)<\/style>/)[1];
   // The flat list view styling must exist (grid rows + a header).
   assert.match(css, /\.list-head,\s*\.list-row\s*\{[^}]*display:\s*grid/);
@@ -229,7 +226,7 @@ test('status prefilter narrows the compact list too', () => {
 });
 
 test('AI ask bar + chat window are present and wired', () => {
-  const html = readFileSync(join(ROOT, 'public', 'index.html'), 'utf8');
+  const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
   // Markup: ask bar input + send + chat log.
   assert.match(html, /id="ai-input"/);
   assert.match(html, /id="ai-send"[^>]*onclick="aiSend\(\)"/);
@@ -245,7 +242,7 @@ test('AI ask bar + chat window are present and wired', () => {
 });
 
 test('AI chat is agentic: clear button, memory, focus, and no #undefined', () => {
-  const html = readFileSync(join(ROOT, 'public', 'index.html'), 'utf8');
+  const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
   // Clear button so the transcript is not an endless screen.
   assert.match(html, /id="ai-chat-clear"[^>]*onclick="aiClearChat\(\)"/);
   const script = html.match(/<script>([\s\S]*)<\/script>/)[1];

@@ -9,14 +9,25 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
-const DATA_DIR = join(ROOT, 'data');
-const BACKUP_DIR = join(ROOT, 'backups');
+
+// Public/private split via an on-device overlay:
+//   - Repo root is the PUBLIC build (committed, pushed). Its data dir holds only
+//     the fictional sample seed.
+//   - A gitignored `private/` folder is the McKinsey instance's overlay: real
+//     seed, live DB, and backups live there and are NEVER pushed.
+// When `private/` exists we read/write there; otherwise we use the public data dir.
+const PUBLIC_DATA_DIR = join(ROOT, 'data');
+const PRIVATE_DIR = join(ROOT, 'private');
+const HAS_PRIVATE = existsSync(PRIVATE_DIR);
+
+const DATA_DIR = HAS_PRIVATE ? join(PRIVATE_DIR, 'data') : PUBLIC_DATA_DIR;
+const BACKUP_DIR = HAS_PRIVATE ? join(PRIVATE_DIR, 'backups') : join(ROOT, 'backups');
 const DEFAULT_DB_PATH = join(DATA_DIR, 'todo.db');
 // Private, on-device seed (gitignored). Public clones don't have it.
 const SEED_PATH = join(DATA_DIR, 'seed.json');
-// Public demo seed committed to the repo — used when no private seed exists.
-const SAMPLE_SEED_PATH = join(DATA_DIR, 'seed.sample.json');
-// Runtime seed: the user's real data if present, otherwise the shipped sample.
+// Public demo seed committed to the repo — always at the public data dir.
+const SAMPLE_SEED_PATH = join(PUBLIC_DATA_DIR, 'seed.sample.json');
+// Runtime seed: the private real data if present, otherwise the shipped sample.
 const ACTIVE_SEED_PATH = existsSync(SEED_PATH) ? SEED_PATH : SAMPLE_SEED_PATH;
 
 const SCHEMA = `
