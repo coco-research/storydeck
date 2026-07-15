@@ -1,6 +1,9 @@
 # secrets / local env
 .env
 .env.local
+# first-run API key store (lives beside the DB / in userData; never committed)
+ai-config.json
+**/ai-config.json
 
 # dependencies
 node_modules/

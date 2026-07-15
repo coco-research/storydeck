@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow, shell } from 'electron';
 import { createApp, HOST, PORT } from './src/server.js';
 import { backup } from './src/db.js';
+import { applyConfigToEnv } from './src/ai/keystore.js';
 
 let mainWindow = null;
 let httpServer = null;
@@ -20,6 +21,7 @@ async function ensureServer() {
   if (app.isPackaged && !process.env.DB_PATH) {
     process.env.DB_PATH = join(app.getPath('userData'), 'todo.db');
   }
+  applyConfigToEnv(); // load a first-run stored API key (from userData) if present
   const { server, db } = createApp();
   httpServer = server;
   try { backup(db); } catch (e) { /* backups are best-effort */ }

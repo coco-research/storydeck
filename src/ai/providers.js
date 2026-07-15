@@ -27,7 +27,7 @@ const DEFAULT_MODELS = {
   cursor: 'auto',
 };
 
-const KEY_FOR = {
+export const KEY_FOR = {
   openai: 'OPENAI_API_KEY',
   anthropic: 'ANTHROPIC_API_KEY',
   cursor: 'CURSOR_API_KEY',

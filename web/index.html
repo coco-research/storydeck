@@ -384,6 +384,9 @@
   /* ── Modal ───────────────────────────────────────────────────────────── */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(20,20,19,0.42); z-index: 100; justify-content: center; align-items: center; padding: 18px; }
   .modal-overlay.open { display: flex; }
+  .ai-key-note { color: var(--muted); font-size: 12px; margin: 2px 0 10px; line-height: 1.45; }
+  .ai-key-note b { color: var(--text); font-weight: 700; }
+  .ai-key-err { color: var(--danger); font-size: 12px; margin: 8px 0 0; }
   .modal { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; width: 500px; max-width: 100%; box-shadow: var(--shadow); max-height: 90vh; overflow-y: auto; }
   .modal h2 { font-family: var(--font-serif); font-size: 21px; font-weight: 500; margin-bottom: 14px; letter-spacing: -0.01em; }
   .modal label { font-size: 12px; font-weight: 600; color: var(--text-2); display: block; margin-bottom: 5px; margin-top: 12px; }
@@ -806,6 +809,7 @@
       <button class="add-btn" onclick="openModal()">+ Add story</button>
       <button class="add-btn secondary-btn" onclick="exportJSON()" title="Save a portable copy of the board (e.g. to move to another Mac)">Backup</button>
       <button class="add-btn secondary-btn" onclick="openImportPicker()" title="Restore the board from a backup file (replaces current stories)">Restore</button>
+      <button class="add-btn secondary-btn" id="ai-key-btn" onclick="openAiKeyModal()" title="Connect your own AI key (OpenAI / Anthropic / Cursor)">AI key</button>
       <input type="file" id="import-json-input" accept="application/json,.json" style="display:none" onchange="importJSON(event)" />
     </div>
   </header>
@@ -892,6 +896,28 @@
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeModal()">Cancel</button>
       <button class="modal-save" id="modal-save-btn" onclick="saveNewTask()">Add story</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="ai-key-modal">
+  <div class="modal">
+    <h2>Connect an AI key</h2>
+    <p class="ai-key-note" id="ai-key-status">Checking current status…</p>
+    <label>Provider</label>
+    <div class="seg-group" id="ai-key-provider" role="group" aria-label="AI provider">
+      <button type="button" class="seg-btn" data-provider="openai" onclick="setAiKeyProvider('openai')">OpenAI</button>
+      <button type="button" class="seg-btn" data-provider="anthropic" onclick="setAiKeyProvider('anthropic')">Anthropic</button>
+      <button type="button" class="seg-btn" data-provider="cursor" onclick="setAiKeyProvider('cursor')">Cursor</button>
+    </div>
+    <label>API key</label>
+    <input type="password" id="ai-key-input" autocomplete="off" spellcheck="false" placeholder="sk-…  (stored on this device only, never uploaded)" />
+    <label>Model (optional)</label>
+    <input type="text" id="ai-key-model" autocomplete="off" spellcheck="false" placeholder="leave blank for the provider default" />
+    <p class="ai-key-err" id="ai-key-err" hidden></p>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeAiKeyModal()">Cancel</button>
+      <button class="modal-save" id="ai-key-save-btn" onclick="saveAiKey()">Save key</button>
     </div>
   </div>
 </div>
@@ -1501,6 +1527,69 @@ function initTheme() {
   let stored = 'gruvbox';
   try { stored = localStorage.getItem(THEME_KEY) || 'gruvbox'; } catch (e) {}
   setTheme(stored);
+}
+
+// ── AI key settings (bring your own key) ────────────────────────────────────
+let aiKeyProvider = 'openai';
+function setAiKeyProvider(p) {
+  aiKeyProvider = ['openai', 'anthropic', 'cursor'].includes(p) ? p : 'openai';
+  document.querySelectorAll('#ai-key-provider .seg-btn').forEach(b =>
+    b.setAttribute('aria-pressed', b.dataset.provider === aiKeyProvider ? 'true' : 'false'));
+}
+async function refreshAiKeyStatus() {
+  const el = document.getElementById('ai-key-status');
+  try {
+    const res = await fetch(API + '/api/ai/health');
+    const h = await res.json();
+    if (h.enabled) {
+      el.innerHTML = `Active: <b>${escHTML(h.provider)}</b> · model <b>${escHTML(h.model || 'default')}</b>. Save a new key to switch or update.`;
+      setAiKeyProvider(h.provider);
+    } else {
+      const present = Object.entries(h.keysPresent || {}).filter(([, v]) => v).map(([k]) => k);
+      el.innerHTML = present.length
+        ? `Key present for <b>${present.map(escHTML).join(', ')}</b> but AI is off — save a valid key to enable.`
+        : 'No AI key connected yet. Paste one below — it stays on this device.';
+    }
+  } catch (e) {
+    el.textContent = 'Could not read AI status.';
+  }
+}
+function openAiKeyModal() {
+  const err = document.getElementById('ai-key-err');
+  if (err) { err.hidden = true; err.textContent = ''; }
+  document.getElementById('ai-key-input').value = '';
+  document.getElementById('ai-key-model').value = '';
+  setAiKeyProvider(aiKeyProvider);
+  refreshAiKeyStatus();
+  document.getElementById('ai-key-modal').classList.add('open');
+  setTimeout(() => document.getElementById('ai-key-input').focus(), 40);
+}
+function closeAiKeyModal() {
+  document.getElementById('ai-key-modal').classList.remove('open');
+}
+async function saveAiKey() {
+  const err = document.getElementById('ai-key-err');
+  const btn = document.getElementById('ai-key-save-btn');
+  const apiKey = document.getElementById('ai-key-input').value.trim();
+  const model = document.getElementById('ai-key-model').value.trim();
+  err.hidden = true; err.textContent = '';
+  if (!apiKey) { err.hidden = false; err.textContent = 'Please paste an API key.'; return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(API + '/api/ai/key', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: aiKeyProvider, apiKey, model }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not save the key.');
+    await refreshAiKeyStatus();
+    closeAiKeyModal();
+  } catch (e) {
+    err.hidden = false; err.textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save key';
+  }
 }
 
 // ── view (board / dashboard) ────────────────────────────────────────────────

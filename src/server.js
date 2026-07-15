@@ -32,6 +32,7 @@ import {
 } from './db.js';
 import { runAssistant, AIError } from './ai/agent.js';
 import { health as aiHealth } from './ai/providers.js';
+import { saveConfig as saveAiKey, applyConfigToEnv } from './ai/keystore.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -104,6 +105,18 @@ async function handleApi(db, req, res, path, url) {
   // GET /api/ai/health → active AI provider/model (key-safe; never leaks keys)
   if (path === '/api/ai/health' && method === 'GET') {
     return sendJSON(res, 200, aiHealth());
+  }
+
+  // POST /api/ai/key → save a bring-your-own key (persists to userData, not repo)
+  if (path === '/api/ai/key' && method === 'POST') {
+    const body = await readBody(req);
+    try {
+      const saved = saveAiKey({ provider: body?.provider, apiKey: body?.apiKey, model: body?.model });
+      return sendJSON(res, 200, { saved, health: aiHealth() });
+    } catch (err) {
+      if (err instanceof AIError) return sendJSON(res, err.status || 400, { error: err.message });
+      return sendJSON(res, 400, { error: err.message });
+    }
   }
 
   // GET /api/export → export payload
@@ -234,6 +247,7 @@ function sendJSON(res, status, obj) {
 // Start only when run directly (not when imported by tests).
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isMain) {
+  applyConfigToEnv(); // load a first-run stored key (if any) before serving
   const { server, db } = createApp();
   backup(db);
   server.listen(PORT, HOST, () => {
