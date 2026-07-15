@@ -46,17 +46,20 @@
         "dmg",
         "zip"
       ],
+      "icon": "build/icon.png",
       "category": "public.app-category.productivity"
     },
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "icon": "build/icon.png"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
+      "icon": "build/icon.png",
       "category": "Utility"
     }
   }

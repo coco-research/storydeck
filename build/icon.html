@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1024px; height: 1024px; }
+  body {
+    display: flex; align-items: center; justify-content: center;
+    background: transparent;
+    font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  /* Rounded-square app tile, gruvbox-dark with a subtle vignette. */
+  .tile {
+    width: 924px; height: 924px;
+    border-radius: 180px;
+    background:
+      radial-gradient(120% 120% at 30% 20%, #32302f 0%, #1d2021 60%, #171a1b 100%);
+    box-shadow: inset 0 0 0 10px #3c3836, inset 0 0 120px rgba(0,0,0,0.55);
+    position: relative;
+    overflow: hidden;
+  }
+  /* Terminal window frame inside the tile. */
+  .term {
+    position: absolute; left: 120px; right: 120px; top: 170px; bottom: 170px;
+    border: 8px solid #504945;
+    border-radius: 28px;
+    background: #282828;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
+  }
+  .bar {
+    height: 92px; flex: none;
+    background: #3c3836;
+    border-bottom: 6px solid #504945;
+    border-radius: 20px 20px 0 0;
+    display: flex; align-items: center; gap: 26px; padding: 0 40px;
+  }
+  .dot { width: 34px; height: 34px; border-radius: 50%; }
+  .r { background: #cc241d; } .y { background: #d79921; } .g { background: #98971a; }
+  .screen {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    gap: 30px;
+  }
+  .caret { color: #fe8019; font-size: 300px; font-weight: 800; line-height: 1; transform: translateY(-8px); }
+  .cursor {
+    width: 130px; height: 210px; background: #fabd2f;
+    box-shadow: 0 0 42px rgba(250,189,47,0.45);
+  }
+</style>
+</head>
+<body>
+  <div class="tile">
+    <div class="term">
+      <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+      <div class="screen">
+        <span class="caret">&#10095;</span>
+        <span class="cursor"></span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

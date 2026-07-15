@@ -77,6 +77,32 @@ saves automatically to your OS user-data folder. No setup, no server to start.
 (Maintainers: push a `v*` tag to trigger the release build — see
 `.github/workflows/release.yml`.)
 
+## Building installers
+
+```bash
+npm run pack        # unpacked app in dist/ (fast sanity check, no installer)
+npm run dist        # full installers: .dmg/.zip (mac), .exe (win), .AppImage (linux)
+```
+
+- **App icon** lives at `build/icon.png` (electron-builder converts it to
+  `.icns`/`.ico`). Regenerate it from source with `npx electron tools/make-icon.cjs`.
+- **Unsigned builds run**, but the OS warns: on macOS, right-click → **Open** the
+  first time (Gatekeeper); on Windows, click **More info → Run anyway**.
+- **macOS signing + notarization** (for a warning-free `.dmg`) needs an Apple
+  Developer account. electron-builder reads these from the environment:
+
+  | Variable                       | Purpose                                   |
+  |--------------------------------|-------------------------------------------|
+  | `CSC_LINK`                     | Path/base64 of your `.p12` signing cert   |
+  | `CSC_KEY_PASSWORD`             | Password for that cert                    |
+  | `APPLE_ID`                     | Apple ID for notarization                 |
+  | `APPLE_APP_SPECIFIC_PASSWORD`  | App-specific password for that Apple ID   |
+  | `APPLE_TEAM_ID`                | Your Apple Developer Team ID              |
+
+  With those set, `npm run dist` signs and notarizes automatically. **Windows**
+  signing uses the same `CSC_LINK` / `CSC_KEY_PASSWORD`. Keep all of these in CI
+  secrets — never commit certificates or passwords.
+
 ## AI assistant (optional)
 
 The ask bar works with **any one of three providers**: OpenAI, Anthropic/Claude,

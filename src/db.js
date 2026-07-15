@@ -33,8 +33,12 @@ const BACKUP_DIR = ENV_DB
 const SEED_PATH = join(DATA_DIR, 'seed.json');
 // Public demo seed committed to the repo — always at the public data dir.
 const SAMPLE_SEED_PATH = join(PUBLIC_DATA_DIR, 'seed.sample.json');
-// Runtime seed: the private real data if present, otherwise the shipped sample.
-const ACTIVE_SEED_PATH = existsSync(SEED_PATH) ? SEED_PATH : SAMPLE_SEED_PATH;
+// Runtime seed resolution (first wins):
+//   1. SEED_PATH env override — lets a packaged build or a smoke test pin a seed.
+//   2. the private real data (private/data/seed.json) when the overlay exists.
+//   3. the shipped public sample.
+const ENV_SEED = (process.env.SEED_PATH || '').trim();
+const ACTIVE_SEED_PATH = ENV_SEED || (existsSync(SEED_PATH) ? SEED_PATH : SAMPLE_SEED_PATH);
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS stories (

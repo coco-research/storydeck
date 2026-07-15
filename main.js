@@ -39,7 +39,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: (process.env.BOARD_TITLE || 'StoryDeck').trim(),
-    backgroundColor: '#f0eee6',
+    backgroundColor: '#1d2021', // gruvbox-dark, matches the retro default (no cream flash)
     autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
