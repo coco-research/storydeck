@@ -28,6 +28,7 @@ import {
   replaceAll,
   backup,
   DEFAULT_DB_PATH,
+  ACTIVE_SEED_PATH,
 } from './db.js';
 import { runAssistant, AIError } from './ai/agent.js';
 
@@ -47,9 +48,13 @@ const MIME = {
   '.ico': 'image/x-icon',
 };
 
-export function createApp(dbPath = DEFAULT_DB_PATH) {
+// Board title is configurable so the public build stays generic ("StoryDeck")
+// while a private instance can brand itself via BOARD_TITLE in .env.
+const BOARD_TITLE = (process.env.BOARD_TITLE || 'StoryDeck').trim();
+
+export function createApp(dbPath = DEFAULT_DB_PATH, seedPath = ACTIVE_SEED_PATH) {
   const db = openDatabase(dbPath);
-  seedIfEmpty(db);
+  seedIfEmpty(db, seedPath);
 
   const server = http.createServer(async (req, res) => {
     try {
@@ -92,7 +97,7 @@ async function handleApi(db, req, res, path, url) {
 
   // GET /api/state  → full board
   if (path === '/api/state' && method === 'GET') {
-    return sendJSON(res, 200, { stories: listStories(db) });
+    return sendJSON(res, 200, { title: BOARD_TITLE, stories: listStories(db) });
   }
 
   // GET /api/export → export payload
@@ -227,7 +232,7 @@ if (isMain) {
   backup(db);
   server.listen(PORT, HOST, () => {
     const url = `http://${HOST}:${PORT}`;
-    console.log(`\n  Rijul's Stories — running locally (on-device only)`);
+    console.log(`\n  ${BOARD_TITLE} — running locally (on-device only)`);
     console.log(`  ${url}`);
     console.log(`  DB: ${DEFAULT_DB_PATH}\n`);
   });

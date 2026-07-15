@@ -12,7 +12,12 @@ const ROOT = join(__dirname, '..');
 const DATA_DIR = join(ROOT, 'data');
 const BACKUP_DIR = join(ROOT, 'backups');
 const DEFAULT_DB_PATH = join(DATA_DIR, 'todo.db');
+// Private, on-device seed (gitignored). Public clones don't have it.
 const SEED_PATH = join(DATA_DIR, 'seed.json');
+// Public demo seed committed to the repo — used when no private seed exists.
+const SAMPLE_SEED_PATH = join(DATA_DIR, 'seed.sample.json');
+// Runtime seed: the user's real data if present, otherwise the shipped sample.
+const ACTIVE_SEED_PATH = existsSync(SEED_PATH) ? SEED_PATH : SAMPLE_SEED_PATH;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS stories (
@@ -292,7 +297,7 @@ export function setMeta(db, key, value) {
 }
 
 // One-time seed from data/seed.json. Idempotent: guarded by a meta flag.
-export function seedIfEmpty(db, seedPath = SEED_PATH) {
+export function seedIfEmpty(db, seedPath = ACTIVE_SEED_PATH) {
   const count = db.prepare('SELECT COUNT(*) AS n FROM stories').get().n;
   if (count > 0 || getMeta(db, 'seeded') === 'true') return { seeded: false, count };
   if (!existsSync(seedPath)) return { seeded: false, count: 0 };
@@ -350,4 +355,4 @@ export function backup(db, dir = BACKUP_DIR) {
   return file;
 }
 
-export { DEFAULT_DB_PATH, BACKUP_DIR };
+export { DEFAULT_DB_PATH, BACKUP_DIR, SEED_PATH, SAMPLE_SEED_PATH, ACTIVE_SEED_PATH };

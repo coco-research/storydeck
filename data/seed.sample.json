@@ -1,0 +1,140 @@
+[
+  {
+    "id": 1,
+    "task": "Design new landing page hero",
+    "project": "Website",
+    "status": "pending",
+    "workStatus": "in-progress",
+    "points": 3,
+    "added": "2026-01-06",
+    "position": 0,
+    "note": "Try a bold headline + product screenshot. A/B test two variants."
+  },
+  {
+    "id": 2,
+    "task": "Fix mobile nav overflow on small screens",
+    "project": "Website",
+    "status": "pending",
+    "points": 2,
+    "urgent": true,
+    "added": "2026-01-06",
+    "position": 1
+  },
+  {
+    "id": 3,
+    "task": "Add a dark mode toggle",
+    "project": "Website",
+    "status": "pending",
+    "points": 2,
+    "added": "2026-01-07",
+    "position": 2
+  },
+  {
+    "id": 4,
+    "task": "Ship push notifications",
+    "project": "Mobile",
+    "status": "pending",
+    "points": 5,
+    "added": "2026-01-07",
+    "position": 3
+  },
+  {
+    "id": 5,
+    "task": "Crash on cold start (iOS 17)",
+    "project": "Mobile",
+    "status": "pending",
+    "workStatus": "blocked",
+    "points": 3,
+    "urgent": true,
+    "added": "2026-01-08",
+    "position": 4,
+    "note": "Reproduces only on first launch after install. Waiting on a device log from QA."
+  },
+  {
+    "id": 6,
+    "task": "Draft the Q3 launch email",
+    "project": "Marketing",
+    "status": "pending",
+    "points": 2,
+    "added": "2026-01-08",
+    "position": 5
+  },
+  {
+    "id": 7,
+    "task": "Schedule the week's social posts",
+    "project": "Marketing",
+    "status": "done",
+    "points": 1,
+    "added": "2026-01-05",
+    "position": 6
+  },
+  {
+    "id": 8,
+    "task": "Vendor invoice — confirm the PO number",
+    "project": "Ops",
+    "status": "pending",
+    "workStatus": "in-progress",
+    "points": 1,
+    "added": "2026-01-06",
+    "position": 7,
+    "note": "Finance flagged a mismatch between the quote and the invoice total.",
+    "comments": [
+      { "text": "sent new po request to the vendor, waiting on reply", "created": "2026-01-07" }
+    ]
+  },
+  {
+    "id": 9,
+    "task": "Rotate API keys and update secrets",
+    "project": "Ops",
+    "status": "pending",
+    "points": 2,
+    "added": "2026-01-09",
+    "position": 8
+  },
+  {
+    "id": 10,
+    "task": "Book a dentist appointment",
+    "project": "Personal",
+    "status": "pending",
+    "points": 1,
+    "added": "2026-01-09",
+    "position": 9
+  },
+  {
+    "id": 11,
+    "task": "Renew gym membership",
+    "project": "Personal",
+    "status": "done",
+    "points": 1,
+    "added": "2026-01-04",
+    "position": 10
+  },
+  {
+    "id": 12,
+    "task": "Set up the CI workflow",
+    "project": "GitHub",
+    "status": "pending",
+    "points": 3,
+    "added": "2026-01-08",
+    "position": 11
+  },
+  {
+    "id": 13,
+    "task": "Write the project README",
+    "project": "GitHub",
+    "status": "pending",
+    "workStatus": "in-progress",
+    "points": 2,
+    "added": "2026-01-09",
+    "position": 12
+  },
+  {
+    "id": 14,
+    "task": "Add issue and PR templates",
+    "project": "GitHub",
+    "status": "done",
+    "points": 1,
+    "added": "2026-01-05",
+    "position": 13
+  }
+]

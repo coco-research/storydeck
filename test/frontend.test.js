@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -70,7 +70,12 @@ function buildApp() {
   );
 }
 
-const seed = JSON.parse(readFileSync(join(ROOT, 'data', 'seed.json'), 'utf8'))
+// Prefer the private on-device seed if present, else the committed public sample
+// so the suite runs in a clean clone with no real data.
+const seedFile = existsSync(join(ROOT, 'data', 'seed.json'))
+  ? join(ROOT, 'data', 'seed.json')
+  : join(ROOT, 'data', 'seed.sample.json');
+const seed = JSON.parse(readFileSync(seedFile, 'utf8'))
   .map((s) => ({ ...s, comments: Array.isArray(s.comments) ? s.comments : [] }));
 
 test('statePatch maps sprint states to API patches', () => {

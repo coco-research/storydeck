@@ -2,12 +2,14 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp, isLoopback } from '../src/server.js';
 import { setModelRunner } from '../src/ai/agent.js';
+import { SAMPLE_SEED_PATH } from '../src/db.js';
 
 let server;
 let base;
 
 before(async () => {
-  const app = createApp(':memory:');
+  // Seed from the committed public sample so the suite is deterministic in any clone.
+  const app = createApp(':memory:', SAMPLE_SEED_PATH);
   server = app.server;
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
@@ -31,7 +33,7 @@ test('GET /api/state returns the seeded board', async () => {
   const res = await fetch(`${base}/api/state`);
   assert.equal(res.status, 200);
   const data = await res.json();
-  assert.equal(data.stories.length, 71);
+  assert.equal(data.stories.length, 14);
 });
 
 test('POST /api/stories creates a story', async () => {

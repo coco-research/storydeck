@@ -12,38 +12,41 @@ import {
   addComment,
   replaceAll,
   getMeta,
+  SAMPLE_SEED_PATH,
 } from '../src/db.js';
 
+// Tests run against the committed PUBLIC sample seed so they are deterministic
+// and pass in a clean clone — never against the private on-device seed.json.
 function freshSeededDb() {
   const db = openDatabase(':memory:');
-  seedIfEmpty(db);
+  seedIfEmpty(db, SAMPLE_SEED_PATH);
   return db;
 }
 
-test('seed loads all 71 stories exactly once', () => {
+test('sample seed loads all stories exactly once', () => {
   const db = freshSeededDb();
-  assert.equal(listStories(db).length, 71);
+  assert.equal(listStories(db).length, 14);
   assert.equal(getMeta(db, 'seeded'), 'true');
   // Idempotent: a second call must not duplicate.
-  const again = seedIfEmpty(db);
+  const again = seedIfEmpty(db, SAMPLE_SEED_PATH);
   assert.equal(again.seeded, false);
-  assert.equal(listStories(db).length, 71);
+  assert.equal(listStories(db).length, 14);
 });
 
 test('seeded data preserves epics, done count, and comments', () => {
   const db = freshSeededDb();
   const stories = listStories(db);
   const done = stories.filter((s) => s.status === 'done');
-  assert.equal(done.length, 16);
+  assert.equal(done.length, 3);
 
   const epics = new Set(stories.map((s) => s.project || 'Unassigned'));
-  ['Coco', 'CR07', 'Kharon', 'AB1', 'GitHub'].forEach((e) => assert.ok(epics.has(e), `missing epic ${e}`));
+  ['Website', 'Mobile', 'GitHub', 'Personal'].forEach((e) => assert.ok(epics.has(e), `missing epic ${e}`));
 
-  // Story 5 (Kharon) has a comment in the seed.
-  const kharon = stories.find((s) => s.task.startsWith('Kharon invoice'));
-  assert.ok(kharon);
-  assert.equal(kharon.comments.length, 1);
-  assert.match(kharon.comments[0].text, /new po request/);
+  // The Ops invoice story carries a comment in the sample seed.
+  const invoice = stories.find((s) => s.task.startsWith('Vendor invoice'));
+  assert.ok(invoice);
+  assert.equal(invoice.comments.length, 1);
+  assert.match(invoice.comments[0].text, /new po request/);
 });
 
 test('createStory assigns a DB id and appears in list', () => {

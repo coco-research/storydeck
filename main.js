@@ -1,4 +1,4 @@
-// Electron desktop shell for Rijul's Stories.
+// Electron desktop shell for StoryDeck (title configurable via BOARD_TITLE).
 // Runs the same local SQLite server inside Electron's own Node runtime
 // (Electron 43 → Node 24, which ships node:sqlite), then loads the board in a
 // native window. Fully on-device: the server only binds 127.0.0.1.
@@ -29,7 +29,7 @@ function createWindow() {
     height: 920,
     minWidth: 900,
     minHeight: 600,
-    title: "Rijul's Stories",
+    title: (process.env.BOARD_TITLE || 'StoryDeck').trim(),
     backgroundColor: '#f0eee6',
     autoHideMenuBar: true,
     webPreferences: {
