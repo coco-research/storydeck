@@ -57,6 +57,30 @@
     --accent-wash-strong: rgba(121,255,77,0.4); --clay: #c6ff6b; --danger: #ff6b6b;
     --success: #7cffa0; --warning: #c6ff6b; --ring: 0 0 0 2px rgba(121,255,77,0.5);
   }
+  /* Light: gruvbox-light paper. Same retro terminal design, inverted for daylight.
+     Cards/body sit on the light "hard" cream; columns are a touch darker so the
+     card-inset relationship from the dark themes is preserved. */
+  html[data-theme="light"] {
+    --bg: #f9f5d7; --panel: #ece3bd; --panel-soft: #f2ead0; --panel-warm: #ece3bd;
+    --surface-strong: #d5c4a1; --text: #282828; --text-2: #3c3836; --muted: #5f5750;
+    --faint-text: #7c6f64; --faint: #d5c4a1; --line: #bdae93; --border: #d5c4a1;
+    --accent: #af3a03; --accent-dark: #d65d0e; --accent-2: #8f3f71; --info: #076678;
+    --accent-wash: rgba(175,58,3,0.10); --accent-wash-strong: rgba(175,58,3,0.28);
+    --clay: #b57614; --danger: #9d0006; --success: #6f7410; --warning: #b57614;
+    --ok: #6f7410;
+    --shadow: 0 10px 26px -16px rgba(60,56,54,0.45);
+    --ring: 0 0 0 2px rgba(175,58,3,0.45);
+  }
+  /* Light-theme semantic washes: retune the hardcoded dark-palette tints so
+     badges/status chips read cleanly on cream (text still uses the tokens). */
+  html[data-theme="light"] .badge-red { background: rgba(157,0,6,0.10); }
+  html[data-theme="light"] .badge-yellow { background: rgba(181,118,20,0.14); }
+  html[data-theme="light"] .badge-green { background: rgba(111,116,16,0.14); }
+  html[data-theme="light"] .status-label.done-label { background: rgba(111,116,16,0.14); }
+  html[data-theme="light"] .action-btn.done-btn:hover { background: rgba(111,116,16,0.14); }
+  html[data-theme="light"] .action-btn.progress-btn:hover { background: rgba(181,118,20,0.14); }
+  html[data-theme="light"] .action-btn.blocked-btn:hover,
+  html[data-theme="light"] .action-btn.delete-btn:hover { background: rgba(157,0,6,0.10); }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -809,6 +833,7 @@
       <button type="button" class="seg-btn" data-theme-val="gruvbox" aria-pressed="true" onclick="setTheme('gruvbox')">gruvbox</button>
       <button type="button" class="seg-btn" data-theme-val="amber" aria-pressed="false" onclick="setTheme('amber')">amber</button>
       <button type="button" class="seg-btn" data-theme-val="green" aria-pressed="false" onclick="setTheme('green')">green</button>
+      <button type="button" class="seg-btn" data-theme-val="light" aria-pressed="false" onclick="setTheme('light')">light</button>
     </div>
     <button type="button" class="add-btn secondary-btn" id="boot-btn" onclick="runBoot()" title="Replay the boot sequence + weekly standup">▸ boot</button>
   </div>
@@ -1464,10 +1489,10 @@ function render() {
   renderDash(visibleTasks);
 }
 
-// ── theme (gruvbox / amber / green) ─────────────────────────────────────────
+// ── theme (gruvbox / amber / green / light) ─────────────────────────────────
 const THEME_KEY = 'rijul-stories-theme';
 function setTheme(name) {
-  const theme = ['gruvbox', 'amber', 'green'].includes(name) ? name : 'gruvbox';
+  const theme = ['gruvbox', 'amber', 'green', 'light'].includes(name) ? name : 'gruvbox';
   if (document.documentElement) document.documentElement.dataset.theme = theme;
   try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
   document.querySelectorAll('#theme-seg .seg-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.themeVal === theme ? 'true' : 'false'));
