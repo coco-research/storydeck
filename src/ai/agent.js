@@ -6,15 +6,16 @@
 //
 // Tests inject a fake gateway via setModelRunner() and never touch the network.
 
-import { listStories } from '../db.js';
+import { listStories, recallFacts } from '../db.js';
 import { boardTools, toSummaryLine } from './tools.js';
 import { AIError } from './errors.js';
 import { runViaProvider } from './providers.js';
 
 // Tools that mutate the board (go through the DB).
 const MUTATION_ACTIONS = new Set(['add_story', 'update_story', 'complete_story', 'add_comment']);
-// Read-only tools that still "run" (query the DB) so their results reach the user.
-const READ_ACTIONS = new Set(['search_stories', 'get_board_summary']);
+// Tools that "run" server-side (query/store) so their results reach the user.
+// remember/recall touch the memory table, not the board.
+const READ_ACTIONS = new Set(['search_stories', 'get_board_summary', 'remember', 'recall']);
 const VALID_FOCUS_STATUS = new Set(['all', 'todo', 'in-progress', 'blocked', 'done']);
 
 // A client-side action: the server validates it and echoes it back for the
@@ -43,12 +44,18 @@ Tools (you may NOT delete or reorder):
 - add_comment     {id*, text*}
 - search_stories  {query*}                 → find stories by text (title/epic/note/comments)
 - get_board_summary {}                      → counts per column, open points, and the urgent queue
+- remember        {text*, kind, entity}     → store a durable fact/preference for future sessions
+    kind = fact | preference | entity | pin
+- recall          {query}                   → look up facts you previously remembered
 - focus_board     {epic, status, query}     → filter what the user SEES on the board (no data change)
     epic  = an epic name, or "Urgent", or "All"
     status= all | todo | in-progress | blocked | done
     query = free-text search
 
 Behaviour — BE AGENTIC, do not just talk:
+- KNOWN FACTS below are durable memory. Use them to personalize answers. When the user
+  states a lasting fact/preference ("X is my director", "always tag finance items CR07",
+  "remember that…"), call remember so it persists. Use recall when the user asks what you know.
 - ALWAYS put a real answer in "reply". When you reference stories, ENUMERATE them as
   "#<id> <short title>" (newline-separated). NEVER say "here are the stories" without listing them.
 - "show / see / list / filter <X>"  → emit focus_board so the board visibly narrows, AND list the matches in "reply".
@@ -73,6 +80,16 @@ function buildContext(db) {
   const lines = all.slice(0, 120).map(toSummaryLine).join('\n');
   return `CURRENT BOARD — ${all.length} stories `
     + `(todo ${counts.todo}, wip ${counts.wip}, blocked ${counts.blocked}, done ${counts.done}):\n${lines}`;
+}
+
+// Long-term memory: durable facts most relevant to this turn, injected as a
+// compact block. recallFacts also reinforces the rows it returns (weight bump).
+function buildKnownFacts(db, message) {
+  let facts = [];
+  try { facts = recallFacts(db, { query: message || '', limit: 12 }); } catch { facts = []; }
+  if (!facts.length) return '';
+  const lines = facts.map((f) => `- ${f.text}${f.entity ? ` (${f.entity})` : ''}`).join('\n');
+  return `KNOWN FACTS (durable memory — use when relevant):\n${lines}\n\n`;
 }
 
 // Short-term memory: the last few turns so the model can resolve back-references.
@@ -125,7 +142,7 @@ export async function runAssistant({ db, message, model, history } = {}) {
   if (!msg) throw new AIError('Message is required', { status: 400 });
   if (msg.length > 4000) throw new AIError('Message too long', { status: 400 });
 
-  const prompt = `${SYSTEM_PROMPT}\n\n${buildContext(db)}\n\n${buildTranscript(history)}USER: ${msg}\n\nJSON:`;
+  const prompt = `${SYSTEM_PROMPT}\n\n${buildContext(db)}\n\n${buildKnownFacts(db, msg)}${buildTranscript(history)}USER: ${msg}\n\nJSON:`;
   const runner = _runner || defaultRunner;
   const raw = await runner(prompt, { model });
 
@@ -159,4 +176,4 @@ export async function runAssistant({ db, message, model, history } = {}) {
   return { reply: reply || 'done.', actions };
 }
 
-export { SYSTEM_PROMPT, buildContext, buildTranscript };
+export { SYSTEM_PROMPT, buildContext, buildTranscript, buildKnownFacts };

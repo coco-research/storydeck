@@ -68,6 +68,18 @@ CREATE TABLE IF NOT EXISTS meta (
   key   TEXT PRIMARY KEY,
   value TEXT
 );
+
+-- Long-term assistant memory (durable facts), on-device only. See AGENTIC-PLAN.md.
+CREATE TABLE IF NOT EXISTS memory (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind       TEXT    NOT NULL DEFAULT 'fact',   -- 'fact' | 'preference' | 'entity' | 'pin'
+  text       TEXT    NOT NULL,
+  entity     TEXT,
+  weight     REAL    NOT NULL DEFAULT 1,
+  created    TEXT    NOT NULL,
+  last_used  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_memory_kind ON memory(kind);
 `;
 
 function nowISO() {
@@ -370,6 +382,79 @@ export function backup(db, dir = BACKUP_DIR) {
   };
   writeFileSync(file, JSON.stringify(payload, null, 2));
   return file;
+}
+
+// ── Long-term memory (durable facts) ─────────────────────────────────────────
+// M0 (baseline): capture + cheap keyword recall, weight bumping on use. No ML.
+const MEMORY_KINDS = new Set(['fact', 'preference', 'entity', 'pin']);
+
+function memoryById(db, id) {
+  return db
+    .prepare('SELECT id, kind, text, entity, weight, created, last_used FROM memory WHERE id = ?')
+    .get(id) || null;
+}
+
+// Store a durable fact. Idempotent on (text, kind): a repeat bumps weight instead
+// of duplicating, so recurring reminders naturally rank higher.
+export function rememberFact(db, { text, kind = 'fact', entity = null, weight = 1 } = {}) {
+  const t = String(text || '').trim();
+  if (!t) throw new Error('memory text is required');
+  const k = MEMORY_KINDS.has(kind) ? kind : 'fact';
+  const ent = entity != null && String(entity).trim() ? String(entity).trim() : null;
+  const ts = nowISO();
+
+  const existing = db.prepare('SELECT id FROM memory WHERE text = ? AND kind = ?').get(t, k);
+  if (existing) {
+    db.prepare('UPDATE memory SET weight = weight + 1, last_used = ?, entity = COALESCE(?, entity) WHERE id = ?')
+      .run(ts, ent, existing.id);
+    return memoryById(db, existing.id);
+  }
+  const info = db
+    .prepare('INSERT INTO memory (kind, text, entity, weight, created, last_used) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(k, t, ent, Number.isFinite(weight) ? weight : 1, ts, ts);
+  return memoryById(db, Number(info.lastInsertRowid));
+}
+
+export function listMemory(db, { limit = 100 } = {}) {
+  return db
+    .prepare('SELECT id, kind, text, entity, weight, created, last_used FROM memory ORDER BY weight DESC, id DESC LIMIT ?')
+    .all(limit);
+}
+
+export function forgetMemory(db, id) {
+  return db.prepare('DELETE FROM memory WHERE id = ?').run(id).changes > 0;
+}
+
+// Recall durable facts for a query. Empty query → top-weighted pins/facts.
+// Cheap keyword scoring (token overlap + pin boost + light weight boost); recall
+// reinforces rows by bumping weight/last_used so useful facts stick around.
+export function recallFacts(db, { query = '', limit = 15 } = {}) {
+  const q = String(query || '').trim().toLowerCase();
+  const ts = nowISO();
+  let rows;
+  if (!q) {
+    rows = db
+      .prepare("SELECT * FROM memory ORDER BY (kind = 'pin') DESC, weight DESC, last_used DESC LIMIT ?")
+      .all(limit);
+  } else {
+    const tokens = q.split(/\s+/).filter(Boolean).slice(0, 8);
+    const all = db.prepare('SELECT * FROM memory').all();
+    const scored = all
+      .map((r) => {
+        const hay = `${r.text} ${r.entity || ''}`.toLowerCase();
+        let score = 0;
+        for (const tok of tokens) if (hay.includes(tok)) score += 1;
+        if (r.kind === 'pin') score += 0.5;
+        score += Math.min(r.weight, 5) * 0.1;
+        return { r, score };
+      })
+      .filter((x) => x.score > 0 || x.r.kind === 'pin');
+    scored.sort((a, b) => b.score - a.score || b.r.weight - a.r.weight);
+    rows = scored.slice(0, limit).map((x) => x.r);
+  }
+  const bump = db.prepare('UPDATE memory SET last_used = ?, weight = weight + 0.1 WHERE id = ?');
+  for (const r of rows) bump.run(ts, r.id);
+  return rows.map((r) => ({ id: r.id, kind: r.kind, text: r.text, entity: r.entity || null, weight: r.weight }));
 }
 
 export { DEFAULT_DB_PATH, BACKUP_DIR, SEED_PATH, SAMPLE_SEED_PATH, ACTIVE_SEED_PATH };

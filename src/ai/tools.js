@@ -8,7 +8,11 @@ import {
   createStory,
   updateStory,
   addComment,
+  rememberFact,
+  recallFacts,
 } from '../db.js';
+
+const VALID_MEMORY_KINDS = new Set(['fact', 'preference', 'entity', 'pin']);
 
 const VALID_STATES = new Set(['todo', 'in-progress', 'blocked', 'done']);
 
@@ -115,6 +119,19 @@ export function boardTools(db) {
         urgent,
       };
     },
+
+    remember(args = {}) {
+      const text = String(args.text || '').trim();
+      if (!text) throw new Error('text is required');
+      const kind = VALID_MEMORY_KINDS.has(args.kind) ? args.kind : 'fact';
+      const row = rememberFact(db, { text, kind, entity: args.entity });
+      return { ok: true, id: row.id, kind: row.kind, remembered: row.text };
+    },
+
+    recall(args = {}) {
+      const results = recallFacts(db, { query: args.query || '', limit: 15 });
+      return { count: results.length, facts: results.map((r) => r.text) };
+    },
   };
 }
 
@@ -175,6 +192,24 @@ export const TOOL_SPECS = [
     name: 'get_board_summary',
     description: 'Get counts by column, open points, and the urgent queue.',
     parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'remember',
+    description: 'Store a durable fact/preference about the user or their work for future turns.',
+    parameters: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'The fact to remember, e.g. "Kevin is my director"' },
+        kind: { type: 'string', enum: ['fact', 'preference', 'entity', 'pin'] },
+        entity: { type: 'string', description: 'Optional subject, e.g. a person, vendor, or epic' },
+      },
+      required: ['text'],
+    },
+  },
+  {
+    name: 'recall',
+    description: 'Retrieve durable facts previously remembered, optionally filtered by a query.',
+    parameters: { type: 'object', properties: { query: { type: 'string' } } },
   },
 ];
 
