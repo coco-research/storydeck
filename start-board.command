@@ -1,5 +1,5 @@
 #!/bin/bash
-# Double-click launcher for Rijul's Stories — opens the native desktop app.
+# Double-click launcher for StoryDeck — opens the native desktop app.
 # The board's local SQLite server runs *inside* Electron (on-device only).
 cd "$(dirname "$0")" || exit 1
 
@@ -9,7 +9,7 @@ if command -v lsof >/dev/null 2>&1; then
 fi
 
 if [ -x "./node_modules/.bin/electron" ]; then
-  echo "Opening Rijul's Stories…"
+  echo "Opening StoryDeck…"
   exec ./node_modules/.bin/electron .
 else
   echo "Electron isn't installed. Run 'npm install' in this folder first,"

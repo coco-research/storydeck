@@ -11,6 +11,9 @@ node_modules/
 # the fictional data/seed.sample.json.
 private/
 
+# internal build/planning scaffolding — local only, not part of the public product
+.team-ship/
+
 # local data & artifacts (public build creates these at runtime)
 data/*.db
 data/*.db-*

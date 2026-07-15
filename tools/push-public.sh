@@ -20,7 +20,7 @@ IDENT=(-c user.name="StoryDeck Dev" -c user.email="dev@storydeck.local")
 git add -A
 
 # ── Guard: no private data may be tracked ────────────────────────────────────
-LEAK="$(git ls-files | grep -E 'private/|seed\.json$|\.db$|\.db-|backups/|(^|/)\.env$' || true)"
+LEAK="$(git ls-files | grep -E 'private/|\.team-ship/|seed\.json$|\.db$|\.db-|backups/|(^|/)\.env$' || true)"
 if [ -n "$LEAK" ]; then
   echo "ABORT: private/sensitive files are tracked — refusing to push:" >&2
   echo "$LEAK" >&2
