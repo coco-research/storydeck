@@ -139,14 +139,31 @@ async function handleApi(db, req, res, path, url) {
     });
   }
 
-  // POST /api/import → bulk replace (transactional), backup first
+  // POST /api/import → bulk replace (transactional), backup first.
+  // Restore accepts arbitrary user files, so validate the shape UP FRONT and
+  // fail with a clear 400 before touching the board. replaceAll is transactional
+  // (rolls back on error), so a rejected import never corrupts existing data.
   if (path === '/api/import' && method === 'POST') {
     const body = await readBody(req);
     const stories = Array.isArray(body) ? body : body?.stories;
-    if (!Array.isArray(stories)) return sendJSON(res, 400, { error: 'Expected a stories array' });
-    backup(db);
-    const result = replaceAll(db, stories);
-    return sendJSON(res, 200, { stories: result });
+    if (!Array.isArray(stories)) {
+      return sendJSON(res, 400, { error: 'Invalid backup file: expected a stories array (or a { stories: [...] } object).' });
+    }
+    const badIndex = stories.findIndex(
+      (s) => !s || typeof s !== 'object' || Array.isArray(s) || !String(s.task || '').trim(),
+    );
+    if (badIndex !== -1) {
+      return sendJSON(res, 400, {
+        error: `Invalid backup file: entry #${badIndex + 1} is not a valid story (each needs a non-empty "task"). Your board was not changed.`,
+      });
+    }
+    try {
+      backup(db);
+      const result = replaceAll(db, stories);
+      return sendJSON(res, 200, { stories: result });
+    } catch (err) {
+      return sendJSON(res, 400, { error: `Import failed: ${err.message}. Your board was not changed.` });
+    }
   }
 
   // POST /api/stories → create

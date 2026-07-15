@@ -154,6 +154,32 @@ test('import replaces all data', async () => {
   assert.equal(stories[0].task, 'imported solo');
 });
 
+test('import rejects a non-array payload with a clear 400', async () => {
+  const res = await fetch(`${base}/api/import`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nope: true }),
+  });
+  assert.equal(res.status, 400);
+  assert.match((await res.json()).error, /stories array/i);
+});
+
+test('import rejects a malformed story and leaves the board unchanged', async () => {
+  const before = (await (await fetch(`${base}/api/state`)).json()).stories;
+  const res = await fetch(`${base}/api/import`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    // entry #2 has no task — the whole import must be rejected.
+    body: JSON.stringify({ stories: [{ task: 'ok' }, { project: 'X' }] }),
+  });
+  assert.equal(res.status, 400);
+  const err = (await res.json()).error;
+  assert.match(err, /entry #2/);
+  assert.match(err, /not changed/i);
+  const after = (await (await fetch(`${base}/api/state`)).json()).stories;
+  assert.equal(after.length, before.length); // rollback / no-op: board intact
+});
+
 test('unknown API endpoint returns 404', async () => {
   const res = await fetch(`${base}/api/nope`);
   assert.equal(res.status, 404);
