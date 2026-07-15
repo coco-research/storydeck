@@ -31,6 +31,7 @@ import {
   ACTIVE_SEED_PATH,
 } from './db.js';
 import { runAssistant, AIError } from './ai/agent.js';
+import { health as aiHealth } from './ai/providers.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -98,6 +99,11 @@ async function handleApi(db, req, res, path, url) {
   // GET /api/state  → full board
   if (path === '/api/state' && method === 'GET') {
     return sendJSON(res, 200, { title: BOARD_TITLE, stories: listStories(db) });
+  }
+
+  // GET /api/ai/health → active AI provider/model (key-safe; never leaks keys)
+  if (path === '/api/ai/health' && method === 'GET') {
+    return sendJSON(res, 200, aiHealth());
   }
 
   // GET /api/export → export payload

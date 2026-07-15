@@ -66,6 +66,31 @@ export function resolveModel(provider, env = process.env) {
   return override || DEFAULT_MODELS[provider] || 'auto';
 }
 
+// Key-safe health snapshot for the UI. Never returns key values — only which
+// providers have a key present (booleans) and the resolved active provider/model.
+// Never throws: when AI is unavailable it reports enabled:false + the reason.
+export function health(env = process.env) {
+  const keysPresent = {};
+  for (const p of PROVIDERS) keysPresent[p] = Boolean(env[KEY_FOR[p]]);
+  try {
+    const { provider } = resolveProvider(env);
+    return {
+      enabled: true,
+      provider,
+      model: resolveModel(provider, env),
+      keysPresent,
+    };
+  } catch (err) {
+    return {
+      enabled: false,
+      provider: null,
+      model: null,
+      keysPresent,
+      reason: err && err.message ? err.message : 'AI is unavailable',
+    };
+  }
+}
+
 async function safeText(res) {
   try {
     return (await res.text()).slice(0, 300);

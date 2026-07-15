@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveProvider, resolveModel, PROVIDERS } from '../src/ai/providers.js';
+import { resolveProvider, resolveModel, PROVIDERS, health } from '../src/ai/providers.js';
 import { AIError } from '../src/ai/errors.js';
 
 test('auto-detects provider from whichever key is present (priority order)', () => {
@@ -51,4 +51,35 @@ test('resolveModel: AI_MODEL overrides, else a sensible per-provider default', (
 
 test('PROVIDERS lists the three supported providers', () => {
   assert.deepEqual(PROVIDERS, ['openai', 'anthropic', 'cursor']);
+});
+
+test('health: reports enabled + active provider/model when a key is present', () => {
+  const h = health({ ANTHROPIC_API_KEY: 'k' });
+  assert.equal(h.enabled, true);
+  assert.equal(h.provider, 'anthropic');
+  assert.equal(h.model, 'claude-sonnet-5');
+  assert.deepEqual(h.keysPresent, { openai: false, anthropic: true, cursor: false });
+});
+
+test('health: honors AI_PROVIDER + AI_MODEL', () => {
+  const h = health({ AI_PROVIDER: 'openai', OPENAI_API_KEY: 'k', AI_MODEL: 'gpt-4o' });
+  assert.equal(h.enabled, true);
+  assert.equal(h.provider, 'openai');
+  assert.equal(h.model, 'gpt-4o');
+});
+
+test('health: disabled with a reason when no keys are set (never throws)', () => {
+  const h = health({});
+  assert.equal(h.enabled, false);
+  assert.equal(h.provider, null);
+  assert.equal(h.model, null);
+  assert.deepEqual(h.keysPresent, { openai: false, anthropic: false, cursor: false });
+  assert.match(h.reason, /AI is unavailable/);
+});
+
+test('health: never leaks key values, only presence booleans', () => {
+  const h = health({ OPENAI_API_KEY: 'super-secret-value' });
+  const serialized = JSON.stringify(h);
+  assert.ok(!serialized.includes('super-secret-value'));
+  assert.equal(h.keysPresent.openai, true);
 });
