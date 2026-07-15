@@ -1,6 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveProvider, resolveModel, PROVIDERS, health } from '../src/ai/providers.js';
+import {
+  resolveProvider,
+  resolveModel,
+  PROVIDERS,
+  health,
+  retryableStatus,
+  parseRetryAfter,
+  computeBackoffMs,
+  guardPromptLength,
+  MAX_PROMPT_CHARS,
+} from '../src/ai/providers.js';
 import { AIError } from '../src/ai/errors.js';
 
 test('auto-detects provider from whichever key is present (priority order)', () => {
@@ -82,4 +92,40 @@ test('health: never leaks key values, only presence booleans', () => {
   const serialized = JSON.stringify(h);
   assert.ok(!serialized.includes('super-secret-value'));
   assert.equal(h.keysPresent.openai, true);
+});
+
+test('retryableStatus: transient statuses retry, model/auth errors do not', () => {
+  for (const s of [429, 500, 502, 503, 504, 529]) assert.equal(retryableStatus(s), true, `${s} should retry`);
+  for (const s of [200, 400, 401, 403, 404, 422]) assert.equal(retryableStatus(s), false, `${s} should not retry`);
+});
+
+test('parseRetryAfter: seconds, HTTP date, and absent/garbage', () => {
+  assert.equal(parseRetryAfter('3'), 3000);
+  assert.equal(parseRetryAfter('0'), 0);
+  assert.equal(parseRetryAfter(null), null);
+  assert.equal(parseRetryAfter(''), null);
+  assert.equal(parseRetryAfter('soon'), null);
+  const now = Date.parse('2026-01-01T00:00:00Z');
+  assert.equal(parseRetryAfter('Thu, 01 Jan 2026 00:00:05 GMT', now), 5000);
+});
+
+test('computeBackoffMs: Retry-After wins; else full jitter within the ceiling', () => {
+  // Trustworthy Retry-After always wins over computed jitter.
+  assert.equal(computeBackoffMs(3, { retryAfterMs: 2500, rng: () => 0.5 }), 2500);
+  // Full jitter: bounded by min(cap, base*2^attempt). base=500 → attempt0 ceiling 500.
+  assert.equal(computeBackoffMs(0, { rng: () => 0 }), 0);
+  assert.equal(computeBackoffMs(0, { rng: () => 0.999 }), 499);
+  // Grows exponentially but never exceeds the cap.
+  assert.equal(computeBackoffMs(10, { cap: 8000, rng: () => 1 }) <= 8000, true);
+  assert.equal(computeBackoffMs(2, { base: 500, rng: () => 1 }) <= 2000, true);
+});
+
+test('guardPromptLength: passes normal prompts, rejects runaway ones', () => {
+  assert.equal(guardPromptLength('hello'), 'hello');
+  const huge = 'x'.repeat(MAX_PROMPT_CHARS + 1);
+  assert.throws(() => guardPromptLength(huge), (err) => {
+    assert.ok(err instanceof AIError);
+    assert.equal(err.status, 413);
+    return true;
+  });
 });

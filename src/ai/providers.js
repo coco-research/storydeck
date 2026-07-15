@@ -99,11 +99,95 @@ async function safeText(res) {
   }
 }
 
+// ── Retry / backoff helpers (pure + testable, no network) ────────────────────
+// Transient HTTP statuses worth retrying: 429 (rate limit), 500/502/503/504
+// (server/timeout), 529 (Anthropic overloaded). 4xx model/auth errors are NOT
+// retryable — retrying them just wastes the user's time.
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504, 529]);
+export function retryableStatus(status) {
+  return RETRYABLE_STATUS.has(Number(status));
+}
+
+// Parse a Retry-After header (integer seconds or an HTTP date) into ms.
+// Returns null when absent/unparseable so the caller falls back to jitter.
+export function parseRetryAfter(headerValue, now = Date.now()) {
+  if (headerValue == null) return null;
+  const raw = String(headerValue).trim();
+  if (raw === '') return null;
+  if (/^\d+$/.test(raw)) return Number(raw) * 1000;
+  const when = Date.parse(raw);
+  if (Number.isNaN(when)) return null;
+  return Math.max(0, when - now);
+}
+
+// Full-jitter exponential backoff (AWS pattern): random(0, min(cap, base*2^n)).
+// A trustworthy Retry-After (429) always wins over computed jitter.
+export function computeBackoffMs(attempt, { base = 500, cap = 8000, retryAfterMs = null, rng = Math.random } = {}) {
+  if (retryAfterMs != null && retryAfterMs >= 0) return retryAfterMs;
+  const ceiling = Math.min(cap, base * 2 ** attempt);
+  return Math.floor(rng() * ceiling);
+}
+
+// Reject runaway prompts before we spend a network round-trip. Char-based
+// (a cheap proxy for tokens); the assistant's snapshot is far smaller than this.
+export const MAX_PROMPT_CHARS = 120_000;
+export function guardPromptLength(prompt, max = MAX_PROMPT_CHARS) {
+  const len = typeof prompt === 'string' ? prompt.length : 0;
+  if (len > max) {
+    throw new AIError(
+      `Request too large (${len} chars > ${max}). Narrow the ask or clear the chat history.`,
+      { status: 413 },
+    );
+  }
+  return prompt;
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// fetch() with bounded retries on transient failures. Honors Retry-After for
+// 429s, full-jitter backoff otherwise; also retries network errors. Non-transient
+// responses are returned as-is for the caller to interpret.
+async function fetchWithRetry(url, opts, { attempts = 3, label = 'request' } = {}) {
+  let lastErr;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      const res = await fetch(url, opts);
+      if (res.ok || !retryableStatus(res.status) || attempt === attempts - 1) return res;
+      const retryAfterMs = parseRetryAfter(res.headers && res.headers.get && res.headers.get('retry-after'));
+      await sleep(computeBackoffMs(attempt, { retryAfterMs }));
+    } catch (err) {
+      lastErr = err;
+      if (attempt === attempts - 1) break;
+      await sleep(computeBackoffMs(attempt));
+    }
+  }
+  throw new AIError(`${label} failed after ${attempts} attempts: ${lastErr ? lastErr.message : 'network error'}`, {
+    status: 502,
+  });
+}
+
+// Turn a non-ok response into a clear, user-facing AIError. 429 → rate limited,
+// 529/5xx → temporarily overloaded, 400/404 mentioning the model → model hint.
+async function httpError(provider, res) {
+  const body = await safeText(res);
+  const status = res.status;
+  if (status === 429) {
+    return new AIError(`${provider} is rate limited right now — wait a moment and try again.`, { status: 429 });
+  }
+  if (status === 529 || status >= 500) {
+    return new AIError(`${provider} is temporarily overloaded — try again shortly.`, { status: 503 });
+  }
+  if ((status === 404 || status === 400) && /model/i.test(body)) {
+    return new AIError(`${provider} rejected the model — set AI_MODEL to a valid model. (${body})`, { status: 400 });
+  }
+  return new AIError(`${provider} request failed (${status}): ${body}`, { status: 502 });
+}
+
 // ── OpenAI (Chat Completions, JSON mode) ─────────────────────────────────────
 async function runOpenAI(prompt, { apiKey, model }) {
-  let res;
-  try {
-    res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetchWithRetry(
+    'https://api.openai.com/v1/chat/completions',
+    {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
@@ -112,11 +196,10 @@ async function runOpenAI(prompt, { apiKey, model }) {
         temperature: 0,
         response_format: { type: 'json_object' },
       }),
-    });
-  } catch (err) {
-    throw new AIError(`OpenAI request failed: ${err.message}`, { status: 502 });
-  }
-  if (!res.ok) throw new AIError(`OpenAI request failed (${res.status}): ${await safeText(res)}`, { status: 502 });
+    },
+    { label: 'OpenAI' },
+  );
+  if (!res.ok) throw await httpError('OpenAI', res);
   const data = await res.json();
   return data?.choices?.[0]?.message?.content || '';
 }
@@ -124,9 +207,9 @@ async function runOpenAI(prompt, { apiKey, model }) {
 // ── Anthropic (Messages API) ─────────────────────────────────────────────────
 // Note: newer Sonnet models reject non-default temperature, so we don't send it.
 async function runAnthropic(prompt, { apiKey, model }) {
-  let res;
-  try {
-    res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetchWithRetry(
+    'https://api.anthropic.com/v1/messages',
+    {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -138,11 +221,10 @@ async function runAnthropic(prompt, { apiKey, model }) {
         max_tokens: 1024,
         messages: [{ role: 'user', content: prompt }],
       }),
-    });
-  } catch (err) {
-    throw new AIError(`Anthropic request failed: ${err.message}`, { status: 502 });
-  }
-  if (!res.ok) throw new AIError(`Anthropic request failed (${res.status}): ${await safeText(res)}`, { status: 502 });
+    },
+    { label: 'Anthropic' },
+  );
+  if (!res.ok) throw await httpError('Anthropic', res);
   const data = await res.json();
   const parts = Array.isArray(data?.content) ? data.content : [];
   return parts.map((p) => (typeof p === 'string' ? p : p?.text || '')).join('') || '';
@@ -191,6 +273,7 @@ async function runCursor(prompt, { apiKey, model }) {
 
 // Dispatch: resolve provider + model, then call the right API. Returns raw text.
 export async function runViaProvider(prompt, { model } = {}, env = process.env) {
+  guardPromptLength(prompt);
   const { provider, apiKey } = resolveProvider(env);
   const modelId = (model && String(model).trim()) || resolveModel(provider, env);
   if (provider === 'openai') return runOpenAI(prompt, { apiKey, model: modelId });
