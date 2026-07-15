@@ -2,8 +2,10 @@
 
 A **local-first, retro-terminal Kanban board** for your stories, tasks, and epics.
 Runs entirely on your machine — your data lives in a local SQLite file and never
-leaves the device. Optional AI assistant, boot screen, dashboard, and three
-selectable terminal themes (gruvbox / amber / green).
+leaves the device. Optional AI assistant, boot screen, dashboard, and four
+selectable terminal themes (gruvbox / amber / green / light).
+
+![StoryDeck board](docs/board.png)
 
 > **Privacy model:** StoryDeck is local-first by design. The board, comments, and
 > backups are stored in `data/` on your disk. The only network egress is the
@@ -77,11 +79,30 @@ saves automatically to your OS user-data folder. No setup, no server to start.
 
 ## AI assistant (optional)
 
-The ask bar works with **any one of three providers** — set the API key for the
-one you use in `.env`. If several are set, the priority is OpenAI → Anthropic →
-Cursor; or force one with `AI_PROVIDER`. The model only ever receives a compact
-snapshot of the board through the local `/api/chat` endpoint; the key stays
-server-side. With no key, the app runs fully offline and the bar reports disabled.
+The ask bar works with **any one of three providers**: OpenAI, Anthropic/Claude,
+or Cursor. The model only ever receives a compact snapshot of the board through
+the local `/api/chat` endpoint; the key stays server-side. With no key, the app
+runs fully offline and the bar reports disabled.
+
+### Bring your own key
+
+Two ways to connect a key — pick whichever fits:
+
+1. **In-app (easiest, recommended for the desktop app).** Click **AI key** in the
+   header, choose your provider, paste the key, and save. It's stored on your
+   device only (next to the database, in your OS user-data folder for the packaged
+   app) — never uploaded and never committed. This is the no-`.env` path.
+
+   ![Connect an AI key](docs/ai-key.png)
+
+2. **Env var (handy for `npm start` / servers).** Put the key in `.env`
+   (`cp env.example .env`). If several keys are set, the priority is
+   OpenAI → Anthropic → Cursor; or force one with `AI_PROVIDER`, and pin a model
+   with `AI_MODEL`.
+
+You can check the live status any time at `GET /api/ai/health` — it reports the
+active provider and model (and which keys are present) without ever echoing the
+key itself.
 
 | Variable            | Purpose                                        | Default                |
 |---------------------|------------------------------------------------|------------------------|
@@ -91,6 +112,8 @@ server-side. With no key, the app runs fully offline and the bar reports disable
 | `AI_PROVIDER`       | Force `openai` \| `anthropic` \| `cursor`      | auto-detect            |
 | `AI_MODEL`          | Pin a model id                                 | per-provider default   |
 | `BOARD_TITLE`       | Custom board title in the header               | `StoryDeck`            |
+| `BOARD_USER`        | Shell-prompt handle (header + ask bar)         | `storydeck`            |
+| `BOARD_CORE_EPICS`  | Comma-separated always-on epic filter buttons  | `Website,Mobile,…`     |
 | `DB_PATH`           | Override the SQLite file location              | `data/todo.db`         |
 
 ## Development

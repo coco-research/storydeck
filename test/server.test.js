@@ -36,6 +36,19 @@ test('GET /api/state returns the seeded board', async () => {
   assert.equal(data.stories.length, 14);
 });
 
+test('GET /api/state exposes configurable branding fields', async () => {
+  // Contract check (env-agnostic): title/user are non-empty strings and
+  // coreEpics is a non-empty array. Values come from BOARD_* env with generic
+  // public defaults; a private overlay may override them.
+  const res = await fetch(`${base}/api/state`);
+  const data = await res.json();
+  assert.equal(typeof data.title, 'string');
+  assert.ok(data.title.length > 0);
+  assert.equal(typeof data.user, 'string');
+  assert.ok(data.user.length > 0);
+  assert.ok(Array.isArray(data.coreEpics) && data.coreEpics.length > 0);
+});
+
 test('POST /api/stories creates a story', async () => {
   const res = await fetch(`${base}/api/stories`, {
     method: 'POST',

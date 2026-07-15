@@ -50,9 +50,15 @@ const MIME = {
   '.ico': 'image/x-icon',
 };
 
-// Board title is configurable so the public build stays generic ("StoryDeck")
-// while a private instance can brand itself via BOARD_TITLE in .env.
+// Board branding is configurable so the public build stays generic ("StoryDeck",
+// "storydeck@board:~$", neutral epics) while a private instance personalizes via
+// BOARD_TITLE / BOARD_USER / BOARD_CORE_EPICS in .env (private overlay).
 const BOARD_TITLE = (process.env.BOARD_TITLE || 'StoryDeck').trim();
+const BOARD_USER = (process.env.BOARD_USER || 'storydeck').trim();
+const BOARD_CORE_EPICS = (process.env.BOARD_CORE_EPICS || 'Website,Mobile,Marketing,Ops,Personal,GitHub')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 export function createApp(dbPath = DEFAULT_DB_PATH, seedPath = ACTIVE_SEED_PATH) {
   const db = openDatabase(dbPath);
@@ -99,7 +105,12 @@ async function handleApi(db, req, res, path, url) {
 
   // GET /api/state  → full board
   if (path === '/api/state' && method === 'GET') {
-    return sendJSON(res, 200, { title: BOARD_TITLE, stories: listStories(db) });
+    return sendJSON(res, 200, {
+      title: BOARD_TITLE,
+      user: BOARD_USER,
+      coreEpics: BOARD_CORE_EPICS,
+      stories: listStories(db),
+    });
   }
 
   // GET /api/ai/health → active AI provider/model (key-safe; never leaks keys)

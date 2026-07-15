@@ -563,7 +563,7 @@
   .brand-line { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; min-width: 0; }
   h1 { color: var(--accent); text-transform: uppercase; letter-spacing: .04em; font-size: 26px; line-height: 1; white-space: nowrap; }
   .meta { font-family: var(--font-sans); font-size: 12.5px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .meta::before { content: "rijul@board:~$ "; color: var(--success); }
+  .meta::before { content: var(--shell-prompt, "storydeck@board:~$ "); color: var(--success); }
   .term-caret { display: inline-block; width: .55ch; height: 1.05em; background: var(--accent); vertical-align: -.15em; margin-left: 5px; animation: bootblink 1.06s steps(1) infinite; }
   @media (prefers-reduced-motion: reduce) { .term-caret { animation: none; } }
 
@@ -793,7 +793,7 @@
 <div id="boot" aria-hidden="true">
   <pre class="boot-ansi">░▒▓█ STORYDECK BBS ██████████████████████████████████████ node: board@localhost · 2400-N-8-1 █▓▒░</pre>
   <div class="boot-brand">STORYDECK</div>
-  <div class="boot-sub">rijul's stories  ·  local-first sprint deck  ·  on-device only</div>
+  <div class="boot-sub" id="boot-sub">local-first sprint deck  ·  on-device only</div>
   <div id="boot-out"></div>
   <span class="boot-caret"></span>
   <button type="button" id="boot-launch" class="boot-launch" hidden>[ enter board ]</button>
@@ -843,9 +843,9 @@
   </div>
 
   <div class="ai-bar" id="ai-bar">
-    <span class="ai-prompt">rijul@board:~$ ask ai ▸</span>
+    <span class="ai-prompt" id="ai-prompt">storydeck@board:~$ ask ai ▸</span>
     <input type="text" class="ai-input" id="ai-input" autocomplete="off" spellcheck="false"
-           placeholder="talk to the board — “add a story to chase finance, urgent, CR07” · “mark #12 done” · “how many WIP?”"
+           placeholder="talk to the board — “add a story to fix the mobile nav, urgent” · “mark #12 done” · “how many WIP?”"
            aria-label="Ask the AI assistant" />
     <button type="button" class="ai-send" id="ai-send" onclick="aiSend()">send</button>
   </div>
@@ -928,7 +928,9 @@ const API = '';
 const DENSITY_KEY = 'rijul-stories-density';
 const DEFAULT_SPRINT_POINTS = 1;
 const UNASSIGNED_EPIC = 'Unassigned';
-const CORE_EPICS = ['Finance','RACM Agent','GitHub','Tech','AMS','Product','Apartment','Personal'];
+// Default filter-button epics. Overridable per instance via BOARD_CORE_EPICS
+// (the private overlay sets its own); the public build ships neutral names.
+let CORE_EPICS = ['Website','Mobile','Marketing','Ops','Personal','GitHub'];
 
 let tasks = [];
 let activeFilter = 'All';
@@ -971,6 +973,8 @@ async function loadState() {
       const titleEl = document.getElementById('board-title');
       if (titleEl) titleEl.textContent = data.title;
     }
+    if (Array.isArray(data.coreEpics) && data.coreEpics.length) CORE_EPICS = data.coreEpics;
+    applyBranding(data.user, data.title);
     clearConnError();
     render();
     if (!bootShown) { bootShown = true; runBoot(); }
@@ -1527,6 +1531,20 @@ function initTheme() {
   let stored = 'gruvbox';
   try { stored = localStorage.getItem(THEME_KEY) || 'gruvbox'; } catch (e) {}
   setTheme(stored);
+}
+
+// Apply per-instance branding: the terminal shell prompt (header + ask bar) and
+// the boot subtitle. Generic by default; a private instance sets BOARD_USER.
+function applyBranding(user, title) {
+  const u = String(user || 'storydeck').trim() || 'storydeck';
+  const prompt = `${u}@board:~$ `;
+  if (document.documentElement) {
+    document.documentElement.style.setProperty('--shell-prompt', JSON.stringify(prompt));
+  }
+  const aiPrompt = document.getElementById('ai-prompt');
+  if (aiPrompt) aiPrompt.textContent = `${prompt}ask ai ▸`;
+  const bootSub = document.getElementById('boot-sub');
+  if (bootSub && title) bootSub.textContent = `${title.toLowerCase()}  ·  local-first sprint deck  ·  on-device only`;
 }
 
 // ── AI key settings (bring your own key) ────────────────────────────────────

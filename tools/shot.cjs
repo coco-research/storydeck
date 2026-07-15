@@ -39,6 +39,7 @@ app.whenReady().then(async () => {
         aiAppend('ai','6 stories are in progress right now.');
       } } catch(e){}
       try { if (${JSON.stringify(process.env.SHOT_EDIT || '')} && typeof openEditStory==='function') openEditStory(Number(${JSON.stringify(process.env.SHOT_EDIT || '')})); } catch(e){}
+      try { if (${JSON.stringify(process.env.SHOT_MODAL || '')}==='aikey' && typeof openAiKeyModal==='function') openAiKeyModal(); } catch(e){}
       window.scrollTo(0,0);
       return document.body ? document.body.scrollHeight : 0;
     })();`);
