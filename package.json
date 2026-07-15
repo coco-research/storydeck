@@ -1,22 +1,63 @@
 {
-  "name": "rijul-stories-board",
+  "name": "storydeck",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "main": "main.js",
-  "description": "Local-first Kanban story board backed by on-device SQLite (node:sqlite). No external network, no cloud.",
+  "description": "StoryDeck — a local-first, retro-terminal Kanban board backed by on-device SQLite. No cloud; optional AI assistant (OpenAI / Anthropic / Cursor).",
   "engines": {
     "node": ">=22.5.0"
   },
   "scripts": {
     "start": "node src/server.js",
     "app": "electron .",
-    "test": "node --test"
+    "test": "node --test",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
   },
   "devDependencies": {
-    "electron": "^43.1.1"
+    "electron": "^43.1.1",
+    "electron-builder": "^25.1.8"
   },
   "dependencies": {
     "@cursor/sdk": "^1.0.23"
+  },
+  "build": {
+    "appId": "com.storydeck.app",
+    "productName": "StoryDeck",
+    "artifactName": "StoryDeck-${version}-${os}-${arch}.${ext}",
+    "files": [
+      "main.js",
+      "src/**/*",
+      "web/**/*",
+      "data/seed.sample.json",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "coco-research",
+      "repo": "storydeck"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility"
+    }
   }
 }

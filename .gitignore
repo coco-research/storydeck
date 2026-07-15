@@ -5,6 +5,9 @@
 # dependencies
 node_modules/
 
+# packaged desktop build output
+dist/
+
 # ── PRIVATE OVERLAY ─────────────────────────────────────────────
 # The McKinsey / first-user instance. Real seed, live DB, backups, and
 # secrets live here and must NEVER be pushed. The public repo ships only

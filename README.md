@@ -65,18 +65,33 @@ ToDo/
   private/             # PRIVATE overlay (gitignored) — real data, DB, backups, .env
 ```
 
+## Download
+
+Grab a prebuilt desktop app from the
+[Releases page](https://github.com/coco-research/storydeck/releases) — macOS
+(`.dmg`), Windows (`.exe`), or Linux (`.AppImage`). Download, run, and your board
+saves automatically to your OS user-data folder. No setup, no server to start.
+
+(Maintainers: push a `v*` tag to trigger the release build — see
+`.github/workflows/release.yml`.)
+
 ## AI assistant (optional)
 
-Set `CURSOR_API_KEY` in `.env` to enable the ask bar. The model only ever receives
-a compact snapshot of the board through the local server's `/api/chat` endpoint;
-the key stays server-side. Without a key, the app runs fully offline and the AI
-bar reports that it's disabled.
+The ask bar works with **any one of three providers** — set the API key for the
+one you use in `.env`. If several are set, the priority is OpenAI → Anthropic →
+Cursor; or force one with `AI_PROVIDER`. The model only ever receives a compact
+snapshot of the board through the local `/api/chat` endpoint; the key stays
+server-side. With no key, the app runs fully offline and the bar reports disabled.
 
-| Variable         | Purpose                                   | Default              |
-|------------------|-------------------------------------------|----------------------|
-| `CURSOR_API_KEY` | Enables the AI assistant                  | *(unset → disabled)* |
-| `AI_MODEL`       | Model id for the assistant                | see `env.example`    |
-| `BOARD_TITLE`    | Custom board title shown in the header    | `StoryDeck`          |
+| Variable            | Purpose                                        | Default                |
+|---------------------|------------------------------------------------|------------------------|
+| `OPENAI_API_KEY`    | Use OpenAI (Chat Completions)                  | *(unset)*              |
+| `ANTHROPIC_API_KEY` | Use Anthropic / Claude (Messages API)          | *(unset)*              |
+| `CURSOR_API_KEY`    | Use the Cursor SDK gateway                     | *(unset)*              |
+| `AI_PROVIDER`       | Force `openai` \| `anthropic` \| `cursor`      | auto-detect            |
+| `AI_MODEL`          | Pin a model id                                 | per-provider default   |
+| `BOARD_TITLE`       | Custom board title in the header               | `StoryDeck`            |
+| `DB_PATH`           | Override the SQLite file location              | `data/todo.db`         |
 
 ## Development
 

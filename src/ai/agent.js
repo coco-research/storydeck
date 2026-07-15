@@ -1,20 +1,15 @@
 // AI assistant runner.
-// Uses the Cursor SDK (@cursor/sdk) purely as the model gateway (Sonnet 4.6):
-// we send a compact board context + the user message and ask for a STRICT JSON
-// action plan, then execute the plan through boardTools() against the local DB.
+// Sends a compact board context + the user message to a model gateway and asks
+// for a STRICT JSON action plan, then executes the plan through boardTools()
+// against the local DB. The gateway supports multiple providers (OpenAI,
+// Anthropic/Claude, Cursor) — see providers.js.
 //
-// The SDK is lazy-imported so this module (and the server) load fine without it.
 // Tests inject a fake gateway via setModelRunner() and never touch the network.
 
-import { mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { listStories } from '../db.js';
 import { boardTools, toSummaryLine } from './tools.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, '..', '..');
-const SCRATCH = join(ROOT, '.ai-scratch');
+import { AIError } from './errors.js';
+import { runViaProvider } from './providers.js';
 
 // Tools that mutate the board (go through the DB).
 const MUTATION_ACTIONS = new Set(['add_story', 'update_story', 'complete_story', 'add_comment']);
@@ -33,14 +28,7 @@ function normalizeFocus(args = {}) {
   return out;
 }
 
-export class AIError extends Error {
-  constructor(message, { disabled = false, status = 500 } = {}) {
-    super(message);
-    this.name = 'AIError';
-    this.disabled = disabled;
-    this.status = status;
-  }
-}
+export { AIError };
 
 const SYSTEM_PROMPT = `You are the assistant for a retro terminal Kanban story board. You are AGENTIC:
 you both ANSWER questions and TAKE actions on the board.
@@ -119,48 +107,13 @@ export function extractJSON(text) {
   return null;
 }
 
-// ── model gateway (Cursor SDK), with a test injection hook ────────────────────
+// ── model gateway (multi-provider), with a test injection hook ────────────────
 let _runner = null; // (prompt, { model }) => Promise<string>  — returns raw model text
 export function setModelRunner(fn) { _runner = fn; }
 
-let _cachedModel = null;
-async function resolveModel(apiKey, sdk) {
-  if (process.env.AI_MODEL) return process.env.AI_MODEL;
-  if (_cachedModel) return _cachedModel;
-  try {
-    const models = await sdk.Cursor.models.list({ apiKey });
-    const ids = (models?.models || models || []).map((m) => (typeof m === 'string' ? m : m.id)).filter(Boolean);
-    // Prefer a Sonnet model, ideally the newest.
-    const sonnet = ids.filter((id) => /sonnet/i.test(id)).sort().reverse();
-    _cachedModel = sonnet[0] || 'auto';
-  } catch {
-    _cachedModel = 'auto';
-  }
-  return _cachedModel;
-}
-
+// Default runner delegates to the provider gateway (OpenAI / Anthropic / Cursor).
 async function defaultRunner(prompt, { model }) {
-  const apiKey = process.env.CURSOR_API_KEY;
-  if (!apiKey) {
-    throw new AIError('AI is unavailable: CURSOR_API_KEY is not set on this machine.', { disabled: true, status: 503 });
-  }
-  let sdk;
-  try {
-    sdk = await import('@cursor/sdk');
-  } catch {
-    throw new AIError('AI is unavailable: the @cursor/sdk package is not installed. Run `npm install @cursor/sdk`.', { disabled: true, status: 503 });
-  }
-  mkdirSync(SCRATCH, { recursive: true });
-  const modelId = model || (await resolveModel(apiKey, sdk));
-  const result = await sdk.Agent.prompt(prompt, {
-    apiKey,
-    model: { id: modelId },
-    local: { cwd: SCRATCH },
-  });
-  if (result.status === 'error') {
-    throw new AIError(`Model run failed: ${result.result || 'unknown error'}`, { status: 502 });
-  }
-  return result.result || '';
+  return runViaProvider(prompt, { model });
 }
 
 /**

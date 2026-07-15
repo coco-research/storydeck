@@ -21,8 +21,14 @@ const PRIVATE_DIR = join(ROOT, 'private');
 const HAS_PRIVATE = existsSync(PRIVATE_DIR);
 
 const DATA_DIR = HAS_PRIVATE ? join(PRIVATE_DIR, 'data') : PUBLIC_DATA_DIR;
-const BACKUP_DIR = HAS_PRIVATE ? join(PRIVATE_DIR, 'backups') : join(ROOT, 'backups');
-const DEFAULT_DB_PATH = join(DATA_DIR, 'todo.db');
+
+// DB_PATH override: the packaged desktop app points this at a writable userData
+// dir (app resources are read-only), so downloaded copies save data automatically.
+const ENV_DB = (process.env.DB_PATH || '').trim();
+const DEFAULT_DB_PATH = ENV_DB || join(DATA_DIR, 'todo.db');
+const BACKUP_DIR = ENV_DB
+  ? join(dirname(ENV_DB), 'backups')
+  : (HAS_PRIVATE ? join(PRIVATE_DIR, 'backups') : join(ROOT, 'backups'));
 // Private, on-device seed (gitignored). Public clones don't have it.
 const SEED_PATH = join(DATA_DIR, 'seed.json');
 // Public demo seed committed to the repo — always at the public data dir.

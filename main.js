@@ -3,6 +3,7 @@
 // (Electron 43 → Node 24, which ships node:sqlite), then loads the board in a
 // native window. Fully on-device: the server only binds 127.0.0.1.
 
+import { join } from 'node:path';
 import { app, BrowserWindow, shell } from 'electron';
 import { createApp, HOST, PORT } from './src/server.js';
 import { backup } from './src/db.js';
@@ -13,6 +14,12 @@ let serverReady = false;
 
 async function ensureServer() {
   if (serverReady) return;
+  // Persist data in the OS userData dir so a downloaded/packaged app saves
+  // automatically (app resources are read-only). Dev runs (unpackaged) keep
+  // using the repo's data/ or private/ overlay.
+  if (app.isPackaged && !process.env.DB_PATH) {
+    process.env.DB_PATH = join(app.getPath('userData'), 'todo.db');
+  }
   const { server, db } = createApp();
   httpServer = server;
   try { backup(db); } catch (e) { /* backups are best-effort */ }
