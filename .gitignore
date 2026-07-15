@@ -1,0 +1,19 @@
+# secrets / local env
+.env
+.env.local
+
+# dependencies
+node_modules/
+
+# local data & artifacts
+data/*.db
+data/*.db-*
+.ai-scratch/
+screenshots/
+
+# live board data — McKinsey-sensitive, keep on-device only
+backups/
+data/seed.json
+
+# OS
+.DS_Store

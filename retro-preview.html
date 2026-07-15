@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="gruvbox" data-view="board">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>storydeck // retro terminal preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=VT323&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     STORYDECK - retro terminal preview (standalone, no backend)
+     Flat + AA-legible (no CRT scanlines/glow/flicker).
+     3 palettes via data-theme: gruvbox (default) | amber | green
+     3 views via data-view: board | list | dash
+     Boot intro: ANSI/BBS banner + live weekly standup, skippable,
+     replayable, and skipped under prefers-reduced-motion.
+     ============================================================ */
+
+  html[data-theme="gruvbox"] {
+    --bg:#1d2021; --bg-alt:#282828; --bg-hi:#3c3836; --border:#504945;
+    --fg:#ebdbb2; --dim:#a89984; --faint:#928374;
+    --success:#b8bb26; --warn:#fabd2f; --danger:#fb4934; --info:#83a598;
+    --accent:#d3869b; --accent-2:#fe8019;
+  }
+  html[data-theme="amber"] {
+    --bg:#0a0a0a; --bg-alt:#12100b; --bg-hi:#1d160c; --border:#3d2f13;
+    --fg:#ffb000; --dim:#c98a12; --faint:#9a6e1a;
+    --success:#e8c36b; --warn:#ffd27f; --danger:#ff6b4a; --info:#ffb000;
+    --accent:#ffd27f; --accent-2:#ff8c42;
+  }
+  html[data-theme="green"] {
+    --bg:#0a0f0a; --bg-alt:#0f160f; --bg-hi:#16241a; --border:#1f3a28;
+    --fg:#33ff66; --dim:#4ea96a; --faint:#2e7d48;
+    --success:#7cffa0; --warn:#c6ff6b; --danger:#ff6b6b; --info:#33ff66;
+    --accent:#b6ffc9; --accent-2:#79ff4d;
+  }
+
+  :root {
+    --font-ui:'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+    --font-retro:'VT323', var(--font-ui);
+    --gap:10px; --radius:3px;
+  }
+
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body {
+    font-family:var(--font-ui); background:var(--bg); color:var(--fg);
+    font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
+    padding:14px; min-height:100vh; display:flex; flex-direction:column; gap:12px;
+  }
+  ::selection { background:var(--fg); color:var(--bg); }
+  * { scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  *::-webkit-scrollbar { width:9px; height:9px; }
+  *::-webkit-scrollbar-thumb { background:var(--border); }
+  *::-webkit-scrollbar-thumb:hover { background:var(--dim); }
+  a { color:var(--info); text-decoration:none; }
+
+  .app { display:flex; flex-direction:column; gap:12px; flex:1 1 auto; min-height:0; }
+
+  .topbar {
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    border:1px solid var(--border); background:var(--bg-alt);
+    padding:8px 12px; border-radius:var(--radius);
+  }
+  .brand { font-family:var(--font-retro); font-size:30px; line-height:1; letter-spacing:.02em; color:var(--accent-2); white-space:nowrap; }
+  .prompt { color:var(--dim); font-size:13px; white-space:nowrap; }
+  .prompt .u { color:var(--warn); } .prompt .p { color:var(--info); }
+  .caret { display:inline-block; width:.55ch; height:1.05em; background:currentColor; color:var(--fg); vertical-align:-0.15em; margin-left:2px; animation:blink 1.06s steps(1) infinite; }
+  @keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+  .spacer { flex:1 1 auto; }
+
+  .switches { display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .switch-group { display:flex; align-items:center; gap:6px; }
+  .switch-label { color:var(--faint); font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .seg button { font-family:var(--font-ui); font-size:12px; color:var(--dim); background:transparent; border:none; padding:4px 10px; cursor:pointer; letter-spacing:.03em; transition:background .15s ease, color .15s ease; }
+  .seg button + button { border-left:1px solid var(--border); }
+  .seg button:hover { color:var(--fg); background:var(--bg-hi); }
+  .seg button[aria-pressed="true"] { background:var(--fg); color:var(--bg); }
+  .seg button:focus-visible { outline:none; box-shadow:inset 0 0 0 2px var(--accent-2); }
+  .ghost-btn { font-family:var(--font-ui); font-size:12px; color:var(--dim); cursor:pointer; background:transparent; border:1px solid var(--border); border-radius:var(--radius); padding:4px 10px; letter-spacing:.03em; transition:color .15s ease, border-color .15s ease; }
+  .ghost-btn:hover { color:var(--fg); border-color:var(--dim); }
+  .ghost-btn:focus-visible { outline:none; box-shadow:0 0 0 2px var(--accent-2); }
+  .ghost-btn .br { color:var(--faint); }
+
+  .filterbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:2px; }
+  .filterbar .lead { color:var(--faint); font-size:12px; letter-spacing:.05em; }
+  .chip { font-family:var(--font-ui); font-size:12px; cursor:pointer; color:var(--dim); background:transparent; border:1px solid var(--border); border-radius:var(--radius); padding:3px 9px; letter-spacing:.02em; transition:color .15s ease, border-color .15s ease, background .15s ease; white-space:nowrap; }
+  .chip:hover { color:var(--fg); border-color:var(--dim); }
+  .chip[aria-pressed="true"] { color:var(--bg); background:var(--accent); border-color:var(--accent); }
+  .chip:focus-visible { outline:none; box-shadow:0 0 0 2px var(--accent-2); }
+  .chip .br { color:var(--faint); }
+  .chip[aria-pressed="true"] .br { color:var(--bg); }
+
+  /* ---- board ---- */
+  .board { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:var(--gap); flex:1 1 auto; min-height:0; }
+  html[data-view="list"] .board, html[data-view="dash"] .board { display:none; }
+  .column { display:flex; flex-direction:column; min-height:0; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-alt); }
+  .col-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; padding:7px 10px; border-bottom:1px solid var(--border); background:var(--bg-hi); text-transform:uppercase; letter-spacing:.1em; font-size:12px; font-weight:700; }
+  .col-head .title::before { content:"# "; color:var(--faint); }
+  .col-head.todo .title { color:var(--info); }
+  .col-head.wip .title { color:var(--warn); }
+  .col-head.blocked .title { color:var(--danger); }
+  .col-head.done .title { color:var(--success); }
+  .col-count { color:var(--dim); font-size:11px; letter-spacing:.04em; font-weight:500; }
+  .col-count .br { color:var(--faint); }
+  .col-body { display:flex; flex-direction:column; gap:6px; padding:8px; overflow-y:auto; flex:1 1 auto; min-height:60px; }
+
+  .card { border:1px solid var(--border); border-radius:var(--radius); background:var(--bg); padding:7px 9px; cursor:pointer; transition:border-color .15s ease, background .15s ease, transform .06s ease; }
+  .card:hover { border-color:var(--dim); background:var(--bg-hi); }
+  .card:active { transform:translateY(1px); }
+  .card.focused { border:2px solid var(--accent-2); padding:6px 8px; }
+  .card:focus-visible { outline:none; border-color:var(--accent-2); box-shadow:0 0 0 1px var(--accent-2); }
+  .card.done { opacity:.62; }
+  .card-meta { display:flex; align-items:center; gap:8px; font-size:11.5px; margin-bottom:3px; }
+  .id { color:var(--faint); }
+  .tag { font-size:10.5px; font-weight:700; letter-spacing:.04em; border:1px solid currentColor; border-radius:2px; padding:0 4px; }
+  .tag.todo { color:var(--info); } .tag.wip { color:var(--warn); } .tag.blocked { color:var(--danger); } .tag.done { color:var(--success); }
+  .bang { color:var(--danger); font-weight:700; letter-spacing:-.5px; }
+  .meta-spacer { flex:1 1 auto; }
+  .pts { color:var(--dim); font-variant-numeric:tabular-nums; }
+  .card-title { color:var(--fg); font-size:13.5px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .card.done .card-title { text-decoration:line-through; text-decoration-color:var(--faint); }
+  .card-sep { border:none; border-top:1px dashed var(--border); margin:6px 0 5px; }
+  .card-foot { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11px; }
+  .epic { color:var(--accent); letter-spacing:.05em; text-transform:uppercase; }
+  .counts { color:var(--faint); font-variant-numeric:tabular-nums; }
+
+  /* ---- list ---- */
+  .list { display:none; flex-direction:column; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-alt); overflow:hidden; flex:1 1 auto; min-height:0; }
+  html[data-view="list"] .list { display:flex; }
+  .list-head, .list-row { display:grid; grid-template-columns:56px 78px 26px 1fr 150px 52px; align-items:center; gap:10px; padding:5px 12px; font-size:12.5px; white-space:nowrap; }
+  .list-head { color:var(--faint); text-transform:uppercase; letter-spacing:.09em; font-size:10.5px; background:var(--bg-hi); border-bottom:1px solid var(--border); }
+  .list-body { overflow-y:auto; }
+  .list-row { border-bottom:1px solid var(--border); cursor:pointer; }
+  .list-row:hover { background:var(--bg-hi); }
+  .list-row:last-child { border-bottom:none; }
+  .list-row.done { opacity:.6; }
+  .lr-id { color:var(--faint); }
+  .lr-title { overflow:hidden; text-overflow:ellipsis; color:var(--fg); }
+  .lr-title .leader { color:var(--faint); }
+  .list-row.done .lr-title span:first-child { text-decoration:line-through; text-decoration-color:var(--faint); }
+  .lr-epic { color:var(--accent); text-transform:uppercase; letter-spacing:.04em; overflow:hidden; text-overflow:ellipsis; }
+  .lr-pts { color:var(--dim); text-align:right; font-variant-numeric:tabular-nums; }
+  .lr-urg { color:var(--danger); font-weight:700; text-align:center; }
+
+  /* ---- dashboard ---- */
+  .dash { display:none; flex-direction:column; gap:12px; flex:1 1 auto; min-height:0; overflow-y:auto; }
+  html[data-view="dash"] .dash { display:flex; }
+  .tiles { display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:var(--gap); }
+  .tile { border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-alt); padding:12px 14px; display:flex; flex-direction:column; gap:2px; }
+  .tile .num { font-family:var(--font-retro); font-size:44px; line-height:.9; }
+  .tile .lbl { font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--faint); }
+  .tile.t-todo .num { color:var(--info); }
+  .tile.t-wip .num { color:var(--warn); }
+  .tile.t-blocked .num { color:var(--danger); }
+  .tile.t-done .num { color:var(--success); }
+  .tile.t-urgent .num { color:var(--danger); }
+  .tile.t-pts .num { color:var(--accent); }
+  .dash-cols { display:grid; grid-template-columns:1fr 1fr; gap:var(--gap); }
+  .panel { border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-alt); }
+  .panel-head { padding:7px 12px; border-bottom:1px solid var(--border); background:var(--bg-hi); text-transform:uppercase; letter-spacing:.1em; font-size:12px; font-weight:700; color:var(--fg); }
+  .panel-head::before { content:"# "; color:var(--faint); }
+  .panel-body { padding:10px 12px; display:flex; flex-direction:column; gap:7px; }
+  .bar-row { display:grid; grid-template-columns:120px 1fr 64px; align-items:center; gap:10px; font-size:12.5px; }
+  .bar-lbl { color:var(--fg); text-transform:uppercase; letter-spacing:.03em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bar-track { font-family:var(--font-ui); color:var(--accent-2); letter-spacing:1px; white-space:nowrap; overflow:hidden; }
+  .bar-track .empty { color:var(--border); }
+  .bar-val { color:var(--dim); text-align:right; font-variant-numeric:tabular-nums; }
+  .urgent-line { font-size:12.5px; color:var(--fg); }
+  .urgent-line .id { color:var(--danger); font-weight:700; }
+  .urgent-line + .urgent-line { border-top:1px dashed var(--border); padding-top:6px; }
+
+  /* ---- status bar ---- */
+  .statusbar { display:flex; align-items:center; gap:14px; flex-wrap:wrap; border:1px solid var(--border); background:var(--bg-hi); padding:5px 12px; border-radius:var(--radius); font-size:12px; color:var(--dim); }
+  .mode { color:var(--bg); background:var(--success); padding:1px 8px; font-weight:700; letter-spacing:.06em; border-radius:2px; }
+  .hints { display:flex; gap:14px; flex-wrap:wrap; }
+  kbd { font-family:var(--font-ui); color:var(--warn); font-size:12px; }
+  .status-right { margin-left:auto; color:var(--faint); font-variant-numeric:tabular-nums; }
+  .status-right b { color:var(--fg); font-weight:500; }
+  .legend { font-size:11px; color:var(--faint); padding:0 2px; }
+  .legend b { color:var(--dim); font-weight:500; }
+
+  /* ---- boot screen ---- */
+  #boot { position:fixed; inset:0; z-index:10000; display:none; flex-direction:column; justify-content:center; background:#05070a; color:#35ff6a; padding:5vh 7vw; font-family:var(--font-ui); font-size:13.5px; line-height:1.6; transition:opacity .35s ease; overflow:auto; }
+  #boot .boot-ansi { color:#1f8f3e; font-size:12px; line-height:1; white-space:pre; overflow:hidden; margin-bottom:2px; }
+  #boot .boot-brand { font-family:var(--font-retro); font-size:64px; line-height:.9; color:#35ff6a; margin:2px 0 2px; letter-spacing:.04em; }
+  #boot .boot-sub { color:#2e7d48; font-size:13px; margin-bottom:14px; letter-spacing:.05em; }
+  #boot-out div { white-space:pre-wrap; }
+  #boot .ok { color:#7cffa0; } #boot .hot { color:#ffd27f; } #boot .head { color:#c6ff6b; }
+  #boot .boot-caret { display:inline-block; width:.6ch; height:1.05em; background:#35ff6a; vertical-align:-0.15em; animation:blink 1.06s steps(1) infinite; }
+  #boot .boot-skip { margin-top:20px; color:#2e7d48; font-size:12px; letter-spacing:.06em; }
+
+  @media (max-width:1240px) { .tiles { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+  @media (max-width:1100px) { .board { grid-template-columns:repeat(2,minmax(0,1fr)); } .dash-cols { grid-template-columns:1fr; } }
+  @media (max-width:680px) {
+    .board { grid-template-columns:1fr; }
+    .tiles { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .list-head, .list-row { grid-template-columns:44px 62px 22px 1fr 60px; }
+    .lr-epic { display:none; }
+    .bar-row { grid-template-columns:96px 1fr 52px; }
+  }
+  @media (prefers-reduced-motion:reduce) { .caret, #boot .boot-caret { animation:none; opacity:1; } }
+</style>
+</head>
+<body>
+  <div id="boot" aria-hidden="true">
+    <pre class="boot-ansi">░▒▓█ STORYDECK BBS ██████████████████████████████████████ node: board@localhost · 2400-N-8-1 █▓▒░</pre>
+    <div class="boot-brand">STORYDECK</div>
+    <div class="boot-sub">sprint board  ·  est. 2026  ·  a local-first story deck</div>
+    <div id="boot-out"></div>
+    <span class="boot-caret"></span>
+    <div class="boot-skip">press any key or click to skip</div>
+  </div>
+
+  <div class="app">
+    <div class="topbar">
+      <span class="brand">STORYDECK</span>
+      <span class="prompt"><span class="u">rijul</span>@<span class="p">board</span>:~$ sprint --view<span class="caret"></span></span>
+      <span class="spacer"></span>
+      <div class="switches">
+        <div class="switch-group">
+          <span class="switch-label">theme</span>
+          <div class="seg" id="theme-seg" role="group" aria-label="Palette">
+            <button data-val="gruvbox" aria-pressed="true">gruvbox</button>
+            <button data-val="amber" aria-pressed="false">amber</button>
+            <button data-val="green" aria-pressed="false">green</button>
+          </div>
+        </div>
+        <div class="switch-group">
+          <span class="switch-label">view</span>
+          <div class="seg" id="view-seg" role="group" aria-label="View">
+            <button data-val="board" aria-pressed="true">board</button>
+            <button data-val="list" aria-pressed="false">list</button>
+            <button data-val="dash" aria-pressed="false">dash</button>
+          </div>
+        </div>
+        <button class="ghost-btn" id="boot-btn"><span class="br">[</span> replay boot <span class="br">]</span></button>
+      </div>
+    </div>
+
+    <div class="filterbar" id="filterbar"><span class="lead">epic:</span></div>
+
+    <div class="board" id="board"></div>
+
+    <div class="list" id="list">
+      <div class="list-head"><span>id</span><span>status</span><span>!</span><span>story</span><span>epic</span><span>pts</span></div>
+      <div class="list-body" id="list-body"></div>
+    </div>
+
+    <div class="dash" id="dash"></div>
+
+    <div class="statusbar">
+      <span class="mode">NORMAL</span>
+      <div class="hints">
+        <span><kbd>j/k</kbd> move</span><span><kbd>H/L</kbd> column</span>
+        <span><kbd>&#9166;</kbd> open</span><span><kbd>n</kbd> new</span>
+        <span><kbd>/</kbd> search</span><span><kbd>v</kbd> view</span><span><kbd>?</kbd> help</span>
+      </div>
+      <span class="status-right" id="status-right"></span>
+    </div>
+
+    <p class="legend"><b>tags</b> [TODO] [WIP] [BLKD] [DONE] &nbsp;&middot;&nbsp; <b>!!</b> urgent &nbsp;&middot;&nbsp; focused card = double border &nbsp;&middot;&nbsp; keys: <b>v</b> view, <b>b</b> boot &nbsp;&middot;&nbsp; preview only, live from your seed data</p>
+  </div>
+
+<script>
+/* ---- full board data, mapped from data/seed.json (project->epic; col from status/workStatus) ---- */
+const S = [
+  [1,"Review documents submitted by Anikite","AMS","done",1,0,0,0],
+  [2,"Build AMS roadmap with multiple scenario options","AMS","todo",1,0,0,0],
+  [3,"Send class 10th Haryana mark sheet to Papa","Personal","done",1,0,0,0],
+  [4,"Send Creata letter to Mom","Personal","done",1,0,1,0],
+  [5,"Kharon invoice - confirm with Optimize: old PO #136095 or new PO?","Kharon","wip",1,0,1,1],
+  [6,"Give OneTrust PO number to finance for annual renewal","OT Renewal","todo",1,0,1,0],
+  [7,"Reach out to finance - resolve OT Invoice for CFC order","CFC","todo",1,0,0,0],
+  [8,"Reply to Rocky - annual renewal","OT Renewal","done",1,0,0,0],
+  [9,"Check AWS account for Auditboard - follow up with Leo and Chinmay","Tech","done",1,0,0,0],
+  [10,"Reply to Manoj - delay update on Process Flow and RACM agent","RACM Agent","done",1,0,0,0],
+  [11,"Build agent package for Cursor","RACM Agent","done",1,1,1,0],
+  [12,"Coordinate with Kam and Manoj to test agent in Cursor","RACM Agent","wip",1,0,0,0],
+  [13,"Decide: Cursor vs Platform McKinsey","RACM Agent","todo",1,0,1,0],
+  [14,"Last engineer onboarding and selection","CR07","todo",1,0,0,0],
+  [15,"Escalate charge code change - switched from ours (355) to Optimize's without approval","CFC","wip",1,1,0,0],
+  [16,"Update charge code in product portal to OneTrust code","CR07","done",1,0,1,0],
+  [17,"Chris to cancel CFC OneTrust invoice","CFC","done",1,0,1,0],
+  [18,"Resubmit CFC OneTrust invoice with correct charge code Z500149","CFC","todo",1,0,1,0],
+  [19,"Inform Hayley - CFC invoice cancellation and resubmission","CR07","done",1,0,1,0],
+  [20,"Create budget document for all Cross Risk Products + 2026/2027 renewals","CR07","todo",1,1,1,0],
+  [21,"WorkIQ - connect with Kevin for Microsoft API integration","Tech","todo",1,0,0,0],
+  [22,"Portal capacity management - quarterly capacity calculations","Cap Mgt","wip",1,0,0,0],
+  [23,"Clear and action email inbox","Personal","done",1,0,0,0],
+  [24,"Connect with Leo - Okta & Microsoft AD integration with OneTrust","Tech","todo",1,1,0,0],
+  [25,"Search and shortlist apartments","Apartment","done",1,0,1,0],
+  [26,"Schedule viewings for shortlisted apartments","Apartment","wip",1,0,0,1],
+  [27,"Apply for chosen apartment","Apartment","todo",1,0,0,0],
+  [28,"Confirm move-in date - target Aug 10","Apartment","todo",1,0,1,0],
+  [29,"Arrange movers for Aug 10","Apartment","todo",1,0,0,0],
+  [30,"Pack and prep for move","Apartment","todo",1,0,0,0],
+  [31,"Review repo: nanoGPT","GitHub","todo",1,0,1,0],
+  [32,"Review repo: Hugging Face Course","GitHub","todo",1,0,1,0],
+  [33,"Review repo: LangChain","GitHub","todo",1,0,1,0],
+  [34,"Review repo: LlamaIndex","GitHub","todo",1,0,1,0],
+  [35,"Review repo: Microsoft Generative AI for Beginners","GitHub","todo",1,0,1,0],
+  [36,"Review repo: Anthropic Cookbook","GitHub","todo",1,0,1,0],
+  [37,"Review repo: DSPy","GitHub","todo",1,0,1,0],
+  [38,"Review repo: Meta Llama Cookbook","GitHub","todo",1,0,1,0],
+  [39,"Review repo: Paperless-ngx","GitHub","todo",1,0,1,0],
+  [40,"Review repo: Karakeep","GitHub","todo",1,0,1,0],
+  [41,"Review repo: Vaultwarden","GitHub","todo",1,0,1,0],
+  [42,"Review repo: Anytype","GitHub","todo",1,0,1,0],
+  [43,"Review repo: AdGuard Home","GitHub","todo",1,0,1,0],
+  [44,"Review repo: Syncthing","GitHub","todo",1,0,1,0],
+  [45,"Review repo: Home Assistant","GitHub","todo",1,0,1,0],
+  [46,"Review repo: Audiobookshelf","GitHub","todo",1,0,1,0],
+  [47,"Review website: Aixploria","GitHub","todo",1,0,1,0],
+  [48,"Review website: Emailnator","GitHub","todo",1,0,1,0],
+  [49,"Review website: AllGPT","GitHub","todo",1,0,1,0],
+  [50,"Review website: Iteraplay","GitHub","todo",1,0,1,0],
+  [51,"Review website: PhotoText","GitHub","todo",1,0,1,0],
+  [52,"Reach out to finance team to resolve the charge code approval issue","Finance","todo",1,0,1,0],
+  [53,"Prepare Optro MCP Announcement","AB1","done",1,1,0,0],
+  [54,"Submit 2027 plan with different options to the leadership committee","CR07","todo",1,1,1,0],
+  [55,"Coco Loops - finish pending work","Coco","todo",2,0,1,0],
+  [56,"Connect with Innovation Olympics team on Coco Super Intelligence","Coco","todo",1,1,0,0],
+  [57,"M0 and Coco Connect work","Coco","todo",1,0,1,0],
+  [58,"Coco Fusion","Coco","todo",1,0,1,0],
+  [59,"Coco Berkin - Check Macro Immediately","Coco","todo",1,1,0,0],
+  [60,"Stop all coco loops and capture their mission to spawn them later","Coco","done",1,1,0,0],
+  [61,"Prepare MCP Package","AB1","done",1,0,0,0],
+  [62,"Create all necessary readme files for the package","AB1","done",1,0,0,0],
+  [63,"Publish Optro MCP on GHD","Tech","todo",1,0,0,0],
+  [64,"Security Clearance for MCP Package","Tech","todo",1,0,0,0],
+  [65,"Build Front End for RACM","RACM Agent","todo",1,0,0,0],
+  [66,"Order Uhaul Packing Supplies","Apartment","todo",1,0,0,0],
+  [68,"Request for Bridger PO","Reg Coe","todo",1,0,0,0],
+  [69,"Announcement Skill","CR07","wip",1,0,0,0],
+  [70,"Send 2027 Budget increase mail to Alex for Acceptance","Privacy","todo",1,0,0,0],
+  [71,"Connect with Alex to align on the new price increase for One Trust","Privacy","done",1,0,0,0],
+  [72,"INC8935086 - AuditBoard Sync for Mac","AB1","todo",1,1,0,0],
+].map(a => ({ id:a[0], title:a[1], epic:a[2], col:a[3], pts:a[4], urgent:!!a[5], notes:a[6], comments:a[7] }));
+
+const COLS = [
+  { key:"todo", label:"To Do" }, { key:"wip", label:"In Progress" },
+  { key:"blocked", label:"Blocked" }, { key:"done", label:"Done" },
+];
+const TAG = { todo:"TODO", wip:"WIP", blocked:"BLKD", done:"DONE" };
+
+const root = document.documentElement;
+let activeEpic = "ALL";
+let focusedId = 15;
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const epics = () => ["ALL", ...Array.from(new Set(S.map(s => s.epic)))];
+const visible = () => S.filter(s => activeEpic === "ALL" || s.epic === activeEpic);
+
+function renderFilters() {
+  const bar = document.getElementById("filterbar");
+  bar.querySelectorAll(".chip").forEach(n => n.remove());
+  epics().forEach(e => {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.setAttribute("aria-pressed", String(e === activeEpic));
+    b.innerHTML = `<span class="br">[</span>${esc(e).toUpperCase()}<span class="br">]</span>`;
+    b.onclick = () => { activeEpic = e; renderAll(); };
+    bar.appendChild(b);
+  });
+}
+
+function cardHTML(s) {
+  const bang = s.urgent ? `<span class="bang">!!</span>` : "";
+  const counts = (s.notes || s.comments) ? `<span class="counts">N:${s.notes} C:${s.comments}</span>` : `<span class="counts">&nbsp;</span>`;
+  return `<div class="card ${s.col} ${s.id === focusedId ? "focused" : ""}" tabindex="0">
+      <div class="card-meta"><span class="id">#${s.id}</span><span class="tag ${s.col}">${TAG[s.col]}</span>${bang}<span class="meta-spacer"></span><span class="pts">${s.pts}pts</span></div>
+      <div class="card-title">${esc(s.title)}</div>
+      <hr class="card-sep">
+      <div class="card-foot"><span class="epic">${esc(s.epic)}</span>${counts}</div>
+    </div>`;
+}
+
+function renderBoard() {
+  const rows = visible();
+  document.getElementById("board").innerHTML = COLS.map(col => {
+    const items = rows.filter(s => s.col === col.key);
+    const pts = items.reduce((a, s) => a + s.pts, 0);
+    return `<section class="column" aria-label="${col.label}, ${items.length} cards">
+        <div class="col-head ${col.key}"><span class="title">${esc(col.label)}</span><span class="col-count"><span class="br">[</span>${items.length} &middot; ${pts}pts<span class="br">]</span></span></div>
+        <div class="col-body">${items.map(cardHTML).join("") || `<div style="color:var(--faint);font-size:12px;padding:6px 2px;">no stories</div>`}</div>
+      </section>`;
+  }).join("");
+}
+
+function renderList() {
+  const order = { blocked:0, wip:1, todo:2, done:3 };
+  const rows = visible().slice().sort((a,b) => (order[a.col]-order[b.col]) || (b.urgent-a.urgent) || (b.pts-a.pts));
+  document.getElementById("list-body").innerHTML = rows.map(s => `<div class="list-row ${s.col}" tabindex="0">
+        <span class="lr-id">#${s.id}</span><span><span class="tag ${s.col}">${TAG[s.col]}</span></span>
+        <span class="lr-urg">${s.urgent ? "!!" : ""}</span>
+        <span class="lr-title"><span>${esc(s.title)}</span><span class="leader"> ...</span></span>
+        <span class="lr-epic">${esc(s.epic)}</span><span class="lr-pts">${s.pts}pts</span>
+      </div>`).join("");
+}
+
+function meter(n, total, width) {
+  const filled = total ? Math.round((n / total) * width) : 0;
+  return `${"█".repeat(filled)}<span class="empty">${"░".repeat(Math.max(0, width - filled))}</span>`;
+}
+
+function renderDash() {
+  const rows = visible();
+  const by = k => rows.filter(s => s.col === k);
+  const sum = arr => arr.reduce((a, s) => a + s.pts, 0);
+  const todo = by("todo"), wip = by("wip"), blk = by("blocked"), done = by("done");
+  const open = rows.filter(s => s.col !== "done");
+  const urgent = open.filter(s => s.urgent);
+  const tiles = [
+    ["t-todo", todo.length, "To Do"], ["t-wip", wip.length, "In Progress"],
+    ["t-blocked", blk.length, "Blocked"], ["t-done", done.length, "Done"],
+    ["t-urgent", urgent.length, "Urgent"], ["t-pts", sum(open), "Open pts"],
+  ].map(t => `<div class="tile ${t[0]}"><span class="num">${t[1]}</span><span class="lbl">${t[2]}</span></div>`).join("");
+
+  const epicRows = Object.entries(rows.reduce((m, s) => {
+    (m[s.epic] = m[s.epic] || { n:0, p:0 }); m[s.epic].n++; m[s.epic].p += s.pts; return m;
+  }, {})).sort((a,b) => b[1].n - a[1].n);
+  const maxN = Math.max(1, ...epicRows.map(e => e[1].n));
+  const epicHTML = epicRows.map(([e, v]) =>
+    `<div class="bar-row"><span class="bar-lbl">${esc(e)}</span><span class="bar-track">${meter(v.n, maxN, 22)}</span><span class="bar-val">${v.n} &middot; ${v.p}p</span></div>`
+  ).join("");
+
+  const statusRows = COLS.map(c => {
+    const items = by(c.key);
+    return `<div class="bar-row"><span class="bar-lbl">${c.label}</span><span class="bar-track">${meter(items.length, rows.length, 22)}</span><span class="bar-val">${items.length} &middot; ${sum(items)}p</span></div>`;
+  }).join("");
+
+  const urgentHTML = urgent.length
+    ? urgent.map(s => `<div class="urgent-line"><span class="id">#${s.id}</span> ${esc(s.title)} <span style="color:var(--faint)">[${esc(s.epic)}]</span></div>`).join("")
+    : `<div class="urgent-line" style="color:var(--faint)">no open urgent stories</div>`;
+
+  document.getElementById("dash").innerHTML = `
+    <div class="tiles">${tiles}</div>
+    <div class="dash-cols">
+      <section class="panel"><div class="panel-head">by status</div><div class="panel-body">${statusRows}</div></section>
+      <section class="panel"><div class="panel-head">urgent queue (${urgent.length})</div><div class="panel-body">${urgentHTML}</div></section>
+    </div>
+    <section class="panel"><div class="panel-head">by epic (${epicRows.length})</div><div class="panel-body">${epicHTML}</div></section>`;
+}
+
+function renderStatus() {
+  const rows = visible();
+  const pts = rows.filter(s => s.col !== "done").reduce((a,s) => a+s.pts, 0);
+  const blocked = rows.filter(s => s.col === "blocked").length;
+  document.getElementById("status-right").innerHTML =
+    `epic=<b>${esc(activeEpic)}</b> &middot; <b>${rows.length}</b> stories &middot; <b>${pts}</b> open pts &middot; <b>${blocked}</b> blocked`;
+}
+
+function renderAll() { renderFilters(); renderBoard(); renderList(); renderDash(); renderStatus(); }
+
+function wireSeg(id, attr) {
+  const seg = document.getElementById(id);
+  seg.querySelectorAll("button").forEach(btn => {
+    btn.onclick = () => {
+      root.setAttribute(attr, btn.dataset.val);
+      seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+    };
+  });
+}
+wireSeg("theme-seg", "data-theme");
+wireSeg("view-seg", "data-view");
+
+/* ---- boot: ANSI banner + live weekly standup ---- */
+function bootLines() {
+  const open = S.filter(s => s.col !== "done");
+  const wip = S.filter(s => s.col === "wip");
+  const urgent = open.filter(s => s.urgent);
+  const done = S.filter(s => s.col === "done");
+  const todo = S.filter(s => s.col === "todo");
+  const load = open.reduce((a,s) => a+s.pts, 0);
+  const trim = t => t.length > 46 ? t.slice(0,44) + ".." : t;
+  return [
+    "STORYDECK BIOS v2.6.07    (c) 2026 rijul systems",
+    "CPU: sprint-core @ 4.2GHz      Memory: 65536K <span class='ok'>OK</span>",
+    "Detecting storage .............. /stories <span class='ok'>[" + S.length + " objects]</span>",
+    "Mounting board volume .......... <span class='ok'>OK</span>",
+    "Loading kanban kernel .......... <span class='ok'>OK</span>",
+    "Scanning urgent flags .......... <span class='hot'>" + urgent.length + " found</span>",
+    "board@localhost login: rijul",
+    "Authenticating ................. <span class='ok'>OK</span>",
+    "",
+    "<span class='head'>=== WEEKLY STANDUP // week of Jul 08 - Jul 14 ===</span>",
+    "IN PROGRESS (" + wip.length + "): " + wip.map(s => "#" + s.id + " " + trim(s.title)).slice(0,4).join("  |  "),
+    "URGENT (" + urgent.length + "): " + urgent.map(s => "#" + s.id).join(", "),
+    "DONE this week: <span class='ok'>" + done.length + "</span>    TODO backlog: " + todo.length + "    LOAD: <span class='hot'>" + load + " pts</span>",
+    "",
+    "$ storydeck --launch",
+  ];
+}
+let bootTimer = null;
+function runBoot() {
+  const boot = document.getElementById("boot");
+  const out = document.getElementById("boot-out");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const LINES = bootLines();
+  clearInterval(bootTimer);
+  out.innerHTML = "";
+  if (reduce) { boot.style.display = "none"; return; }
+  boot.style.display = "flex"; boot.style.opacity = "1";
+  let i = 0, done = false;
+  const finish = () => {
+    if (done) return; done = true;
+    boot.style.opacity = "0";
+    setTimeout(() => { boot.style.display = "none"; }, 350);
+    document.removeEventListener("keydown", skip); boot.removeEventListener("click", skip);
+  };
+  const skip = () => { clearInterval(bootTimer); out.innerHTML = LINES.map(l => `<div>${l}</div>`).join(""); setTimeout(finish, 140); };
+  bootTimer = setInterval(() => {
+    if (i >= LINES.length) { clearInterval(bootTimer); setTimeout(finish, 750); return; }
+    out.insertAdjacentHTML("beforeend", `<div>${LINES[i]}</div>`); i++;
+  }, 130);
+  document.addEventListener("keydown", skip, { once:true });
+  boot.addEventListener("click", skip, { once:true });
+}
+document.getElementById("boot-btn").onclick = runBoot;
+
+/* preview keyboard niceties: v cycles views, b replays boot */
+const VIEW_ORDER = ["board", "list", "dash"];
+document.addEventListener("keydown", e => {
+  if (e.target.matches("input,textarea")) return;
+  if (document.getElementById("boot").style.display === "flex") return;
+  if (e.key === "v") {
+    const next = VIEW_ORDER[(VIEW_ORDER.indexOf(root.getAttribute("data-view")) + 1) % VIEW_ORDER.length];
+    document.querySelector(`#view-seg button[data-val="${next}"]`).click();
+  }
+  if (e.key === "b") runBoot();
+});
+
+renderAll();
+runBoot();
+</script>
+</body>
+</html>

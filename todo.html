@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rijul — Stories (moved)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0eee6; --panel: #ffffff; --panel-soft: #faf9f5; --surface-strong: #efe9de;
+    --text: #141413; --text-2: #3d3d3a; --muted: #6c6a64; --border: #e5e0d6; --line: #d8d3c6;
+    --accent: #b8562f; --accent-dark: #a44b27;
+    --font-serif: "Newsreader", ui-serif, Georgia, serif;
+    --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; -webkit-font-smoothing: antialiased; }
+  .card { background: var(--panel-soft); border: 1px solid var(--border); border-radius: 20px; padding: 34px 34px 30px; max-width: 620px; width: 100%; }
+  h1 { font-family: var(--font-serif); font-size: 27px; font-weight: 500; letter-spacing: -0.01em; margin-bottom: 8px; }
+  p { color: var(--text-2); font-size: 14px; line-height: 1.6; margin-bottom: 14px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .link { display: inline-block; background: var(--accent); color: #fff; text-decoration: none; padding: 11px 18px; border-radius: 10px; font-size: 14px; font-weight: 550; margin: 6px 0 18px; }
+  .link:hover { background: var(--accent-dark); }
+  code { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 12.5px; background: var(--surface-strong); border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; }
+  .steps { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; }
+  .steps ol { margin: 0; padding-left: 20px; }
+  .steps li { font-size: 13.5px; color: var(--text-2); line-height: 1.7; }
+  .note { border-left: 3px solid var(--accent); padding-left: 12px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Your board moved to a local database</h1>
+    <p>The board now runs as a local app backed by an on-device SQLite database, so your stories stay in one place (no more per-browser loss). Nothing leaves your Mac.</p>
+
+    <a class="link" href="http://127.0.0.1:4321">Open the board → http://127.0.0.1:4321</a>
+
+    <div class="steps">
+      <p style="margin-bottom:8px;font-weight:600;">To start it:</p>
+      <ol>
+        <li>Double-click <code>start-board.command</code> in this folder, <em>or</em></li>
+        <li>In Terminal: <code>cd ~/ToDo</code> then <code>npm start</code></li>
+        <li>Then open <a href="http://127.0.0.1:4321">http://127.0.0.1:4321</a></li>
+      </ol>
+    </div>
+
+    <p class="note muted">This static file is only a signpost — the live app is served by the local server so it can talk to the database. Open it directly and it can't reach your data.</p>
+  </div>
+  <script>
+    // If the server is already running, jump straight to the app.
+    fetch('http://127.0.0.1:4321/api/state', { mode: 'no-cors' })
+      .then(() => { location.href = 'http://127.0.0.1:4321'; })
+      .catch(() => {});
+  </script>
+</body>
+</html>

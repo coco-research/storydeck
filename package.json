@@ -1,0 +1,22 @@
+{
+  "name": "rijul-stories-board",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "main.js",
+  "description": "Local-first Kanban story board backed by on-device SQLite (node:sqlite). No external network, no cloud.",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "app": "electron .",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "electron": "^43.1.1"
+  },
+  "dependencies": {
+    "@cursor/sdk": "^1.0.23"
+  }
+}
