@@ -967,7 +967,7 @@
 <script>
 // ── config / state ──────────────────────────────────────────────────────────
 const API = '';
-const DENSITY_KEY = 'rijul-stories-density';
+const DENSITY_KEY = 'storydeck-density';
 const DEFAULT_SPRINT_POINTS = 1;
 const UNASSIGNED_EPIC = 'Unassigned';
 // Default filter-button epics. Overridable per instance via BOARD_CORE_EPICS
@@ -1562,7 +1562,7 @@ function render() {
 }
 
 // ── theme (gruvbox / amber / green / light) ─────────────────────────────────
-const THEME_KEY = 'rijul-stories-theme';
+const THEME_KEY = 'storydeck-theme';
 function setTheme(name) {
   const theme = ['gruvbox', 'amber', 'green', 'light'].includes(name) ? name : 'gruvbox';
   if (document.documentElement) document.documentElement.dataset.theme = theme;
@@ -1577,8 +1577,15 @@ function initTheme() {
 
 // Apply per-instance branding: the terminal shell prompt (header + ask bar) and
 // the boot subtitle. Generic by default; a private instance sets BOARD_USER.
+// Per-instance branding, resolved from /api/state. Generic public defaults; a
+// private overlay sets BOARD_USER/BOARD_TITLE. Reused by the boot banner and the
+// backup filename so no personal identity is baked into the public build.
+let boardUser = 'storydeck';
+let boardTitle = 'StoryDeck';
 function applyBranding(user, title) {
   const u = String(user || 'storydeck').trim() || 'storydeck';
+  boardUser = u;
+  if (title) boardTitle = title;
   const prompt = `${u}@board:~$ `;
   if (document.documentElement) {
     document.documentElement.style.setProperty('--shell-prompt', JSON.stringify(prompt));
@@ -1587,6 +1594,10 @@ function applyBranding(user, title) {
   if (aiPrompt) aiPrompt.textContent = `${prompt}ask ai ▸`;
   const bootSub = document.getElementById('boot-sub');
   if (bootSub && title) bootSub.textContent = `${title.toLowerCase()}  ·  local-first sprint deck  ·  on-device only`;
+}
+// Filesystem-safe slug of the board title for download filenames.
+function boardSlug() {
+  return (boardTitle || 'storydeck').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'storydeck';
 }
 
 // ── AI key settings (bring your own key) ────────────────────────────────────
@@ -1679,7 +1690,7 @@ async function saveAiKey() {
 }
 
 // ── view (board / dashboard) ────────────────────────────────────────────────
-const VIEW_KEY = 'rijul-stories-view';
+const VIEW_KEY = 'storydeck-view';
 function setView(name) {
   const view = name === 'dash' ? 'dash' : 'board';
   if (document.documentElement) document.documentElement.dataset.view = view;
@@ -1712,6 +1723,7 @@ function renderDash(rows) {
     ['t-urgent', urgent.length, 'Urgent'], ['t-pts', sum(open), 'Open pts'],
   ].map(t => `<div class="tile ${t[0]}"><span class="num">${t[1]}</span><span class="lbl">${t[2]}</span></div>`).join('');
 
+  const donePct = rows.length ? Math.round((done.length / rows.length) * 100) : 0;
   const statusRows = SPRINT_COLUMNS.map(c => {
     const items = by(c.key);
     return `<div class="bar-row"><span class="bar-lbl">${escHTML(c.label)}</span><span class="bar-track">${dashMeter(items.length, rows.length, 22)}</span><span class="bar-val">${items.length} · ${sum(items)}p</span></div>`;
@@ -1734,7 +1746,7 @@ function renderDash(rows) {
   mount.innerHTML = `
     <div class="tiles">${tiles}</div>
     <div class="dash-cols">
-      <section class="panel-card"><div class="panel-head">by status</div><div class="panel-body">${statusRows}</div></section>
+      <section class="panel-card"><div class="panel-head">by status · ${donePct}% done</div><div class="panel-body">${statusRows}</div></section>
       <section class="panel-card"><div class="panel-head">urgent queue (${urgent.length})</div><div class="panel-body">${urgentHTML}</div></section>
     </div>
     <section class="panel-card"><div class="panel-head">by epic (${epicRows.length})</div><div class="panel-body">${epicHTML}</div></section>`;
@@ -1759,13 +1771,13 @@ function bootLines() {
   const load = open.reduce((a, t) => a + formatPoints(t.points), 0);
   const trim = s => s.length > 46 ? s.slice(0, 44) + '..' : s;
   return [
-    'STORYDECK BIOS v2.6.07    (c) 2026 rijul systems',
+    'STORYDECK BIOS v2.6.07    (c) 2026 ' + boardUser + ' systems',
     "CPU: sprint-core @ 4.2GHz      Memory: 65536K <span class='ok'>OK</span>",
     "Detecting storage .............. /stories <span class='ok'>[" + tasks.length + ' objects]</span>',
     "Mounting board volume .......... <span class='ok'>OK</span>",
     "Loading kanban kernel .......... <span class='ok'>OK</span>",
     "Scanning urgent flags .......... <span class='hot'>" + urgent.length + ' found</span>',
-    'board@localhost login: rijul',
+    'board@localhost login: ' + boardUser,
     "Authenticating ................. <span class='ok'>OK</span>",
     '',
     "<span class='head'>=== WEEKLY STANDUP // week of " + weekRangeLabel() + ' ===</span>',
@@ -1972,7 +1984,7 @@ async function exportJSON() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `rijul-stories-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `${boardSlug()}-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   } catch (err) { showConnError(`Backup failed: ${err.message}`); }

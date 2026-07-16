@@ -58,7 +58,7 @@ function buildApp() {
     setStatusFilter: (s) => { statusFilter = s; },
     taskListHTML: () => document.getElementById('task-list').innerHTML,
     metaText: () => document.getElementById('meta-line').textContent,
-    applyBranding, setCoreEpics: (a) => { CORE_EPICS = a; },
+    applyBranding, boardSlug, setCoreEpics: (a) => { CORE_EPICS = a; },
     aiPromptText: () => document.getElementById('ai-prompt').textContent,
     bootSubText: () => document.getElementById('boot-sub').textContent,
   };`;
@@ -111,6 +111,22 @@ test('applyBranding falls back to a generic handle when user is blank', () => {
   const app = buildApp();
   app.applyBranding('', '');
   assert.equal(app.aiPromptText(), 'storydeck@board:~$ ask ai ▸');
+});
+
+test('boardSlug produces a filesystem-safe backup name from the title', () => {
+  const app = buildApp();
+  assert.equal(app.boardSlug(), 'storydeck'); // generic default
+  app.applyBranding('alice', "Alice's Board");
+  assert.equal(app.boardSlug(), 'alice-s-board');
+});
+
+test('boot banner carries no baked-in personal identity', () => {
+  // Public-discipline guard: the boot banner must resolve its handle from
+  // BOARD_USER at runtime, never hardcode a person's name in the shipped markup.
+  const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
+  assert.doesNotMatch(html, /rijul systems/i);
+  assert.doesNotMatch(html, /login: rijul/i);
+  assert.doesNotMatch(html, /rijul-stories-/i);
 });
 
 test('core epics from state feed the epic filter list', () => {
