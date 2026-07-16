@@ -58,6 +58,9 @@ function buildApp() {
     setStatusFilter: (s) => { statusFilter = s; },
     taskListHTML: () => document.getElementById('task-list').innerHTML,
     metaText: () => document.getElementById('meta-line').textContent,
+    applyBranding, setCoreEpics: (a) => { CORE_EPICS = a; },
+    aiPromptText: () => document.getElementById('ai-prompt').textContent,
+    bootSubText: () => document.getElementById('boot-sub').textContent,
   };`;
 
   const factory = new Function(
@@ -86,6 +89,28 @@ test('modals expose accessible dialog semantics', () => {
     assert.match(tag, /aria-modal="true"/);
     assert.match(tag, /aria-labelledby="/);
   }
+});
+
+test('applyBranding wires the shell prompt and boot subtitle', () => {
+  const app = buildApp();
+  app.applyBranding('alice', "Alice's Board");
+  assert.equal(app.aiPromptText(), 'alice@board:~$ ask ai ▸');
+  assert.equal(app.bootSubText(), "alice's board  ·  local-first sprint deck  ·  on-device only");
+});
+
+test('applyBranding falls back to a generic handle when user is blank', () => {
+  const app = buildApp();
+  app.applyBranding('', '');
+  assert.equal(app.aiPromptText(), 'storydeck@board:~$ ask ai ▸');
+});
+
+test('core epics from state feed the epic filter list', () => {
+  const app = buildApp();
+  app.setTasks([]);
+  app.setCoreEpics(['Alpha', 'Beta']);
+  const epics = app.getEpics();
+  assert.ok(epics.includes('Alpha'));
+  assert.ok(epics.includes('Beta'));
 });
 
 test('ask bar has an AI provider status chip wired to the key modal', () => {
