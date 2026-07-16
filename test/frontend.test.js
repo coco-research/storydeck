@@ -83,12 +83,21 @@ test('modals expose accessible dialog semantics', () => {
   // marked as modal so screen readers announce them and focus tooling can trap.
   const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
   const dialogs = html.match(/<div class="modal"[^>]*>/g) || [];
-  assert.equal(dialogs.length, 2, 'expected two .modal dialogs');
+  assert.equal(dialogs.length, 3, 'expected three .modal dialogs');
   for (const tag of dialogs) {
     assert.match(tag, /role="dialog"/);
     assert.match(tag, /aria-modal="true"/);
     assert.match(tag, /aria-labelledby="/);
   }
+});
+
+test('keyboard-shortcut help overlay exists and is wired to "?"', () => {
+  const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
+  assert.match(html, /id="help-modal"/);
+  assert.match(html, /function toggleShortcutsHelp\(/);
+  // "?" toggles it and Escape closes it.
+  assert.match(html, /e\.key === '\?'[^\n]*toggleShortcutsHelp\(\)/);
+  assert.match(html, /closeShortcutsHelp\(\)/);
 });
 
 test('applyBranding wires the shell prompt and boot subtitle', () => {

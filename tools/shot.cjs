@@ -40,6 +40,7 @@ app.whenReady().then(async () => {
       } } catch(e){}
       try { if (${JSON.stringify(process.env.SHOT_EDIT || '')} && typeof openEditStory==='function') openEditStory(Number(${JSON.stringify(process.env.SHOT_EDIT || '')})); } catch(e){}
       try { if (${JSON.stringify(process.env.SHOT_MODAL || '')}==='aikey' && typeof openAiKeyModal==='function') openAiKeyModal(); } catch(e){}
+      try { if (${JSON.stringify(process.env.SHOT_MODAL || '')}==='help' && typeof openShortcutsHelp==='function') openShortcutsHelp(); } catch(e){}
       window.scrollTo(0,0);
       return document.body ? document.body.scrollHeight : 0;
     })();`);

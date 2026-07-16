@@ -387,6 +387,15 @@
   .ai-key-note { color: var(--muted); font-size: 12px; margin: 2px 0 10px; line-height: 1.45; }
   .ai-key-note b { color: var(--text); font-weight: 700; }
   .ai-key-err { color: var(--danger); font-size: 12px; margin: 8px 0 0; }
+  .help-keys { list-style: none; margin: 6px 0 4px; padding: 0; }
+  .help-keys li { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px dashed var(--line); }
+  .help-keys li:last-child { border-bottom: none; }
+  .help-keys kbd {
+    flex: 0 0 auto; min-width: 34px; text-align: center; font-family: inherit; font-size: 12px;
+    padding: 3px 8px; color: var(--accent); background: var(--panel-soft);
+    border: 1px solid var(--border); border-radius: 3px;
+  }
+  .help-keys span { color: var(--text-2); font-size: 13px; }
   .modal { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; width: 500px; max-width: 100%; box-shadow: var(--shadow); max-height: 90vh; overflow-y: auto; }
   .modal h2 { font-family: var(--font-serif); font-size: 21px; font-weight: 500; margin-bottom: 14px; letter-spacing: -0.01em; }
   .modal label { font-size: 12px; font-weight: 600; color: var(--text-2); display: block; margin-bottom: 5px; margin-top: 12px; }
@@ -880,7 +889,7 @@
   <div class="statusbar">
     <span class="mode">NORMAL</span>
     <div class="hints">
-      <span><kbd>/</kbd> search</span><span><kbd>a</kbd> ask ai</span><span><kbd>n</kbd> new</span><span><kbd>v</kbd> view</span><span><kbd>b</kbd> boot</span>
+      <span><kbd>/</kbd> search</span><span><kbd>a</kbd> ask ai</span><span><kbd>n</kbd> new</span><span><kbd>v</kbd> view</span><span><kbd>b</kbd> boot</span><span><kbd>?</kbd> help</span>
     </div>
     <span class="status-right" id="status-right"></span>
   </div>
@@ -933,6 +942,24 @@
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeAiKeyModal()">Cancel</button>
       <button class="modal-save" id="ai-key-save-btn" onclick="saveAiKey()">Save key</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="help-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <h2 id="help-title">Keyboard shortcuts</h2>
+    <ul class="help-keys">
+      <li><kbd>/</kbd><span>Focus search</span></li>
+      <li><kbd>a</kbd><span>Focus the ask-AI bar</span></li>
+      <li><kbd>n</kbd><span>New story</span></li>
+      <li><kbd>v</kbd><span>Toggle board / dashboard</span></li>
+      <li><kbd>b</kbd><span>Replay the boot screen</span></li>
+      <li><kbd>?</kbd><span>Show this help</span></li>
+      <li><kbd>Esc</kbd><span>Close menus, dialogs &amp; this help</span></li>
+    </ul>
+    <div class="modal-actions">
+      <button class="modal-save" onclick="closeShortcutsHelp()">Got it</button>
     </div>
   </div>
 </div>
@@ -1952,6 +1979,16 @@ async function exportJSON() {
 }
 function openImportPicker() { document.getElementById('import-json-input').click(); }
 
+// Keyboard-shortcut help overlay (toggled with "?"). Uses the shared modal
+// focus-trap; Esc closes it via the global handler.
+function openShortcutsHelp() { document.getElementById('help-modal')?.classList.add('open'); }
+function closeShortcutsHelp() { document.getElementById('help-modal')?.classList.remove('open'); }
+function toggleShortcutsHelp() {
+  const el = document.getElementById('help-modal');
+  if (!el) return;
+  el.classList.contains('open') ? closeShortcutsHelp() : openShortcutsHelp();
+}
+
 // Guarded "start fresh": clears the board to empty. Destructive, so we require an
 // explicit confirm; the server writes a timestamped backup first, so it's always
 // recoverable via Restore.
@@ -2151,8 +2188,9 @@ document.addEventListener('keydown', e => {
     document.getElementById('story-search').focus();
     return;
   }
-  if (e.key === 'Escape') { closeStatusMenu(); closeModal(); closeAiKeyModal(); cancelNote(); }
+  if (e.key === 'Escape') { closeStatusMenu(); closeModal(); closeAiKeyModal(); closeShortcutsHelp(); cancelNote(); }
   if (e.key === 'n' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); openModal(); }
+  if (e.key === '?' && !inField && !openSelect) { e.preventDefault(); toggleShortcutsHelp(); }
   if (!inField && !openSelect) {
     if (e.key === 'v') { e.preventDefault(); setView((document.documentElement.dataset.view === 'dash') ? 'board' : 'dash'); }
     if (e.key === 'b') { e.preventDefault(); runBoot(); }
