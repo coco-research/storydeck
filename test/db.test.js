@@ -33,6 +33,31 @@ test('sample seed loads all stories exactly once', () => {
   assert.equal(listStories(db).length, 14);
 });
 
+test('due date round-trips on create, patch, and clears when done', () => {
+  const db = openDatabase(':memory:');
+  const s = createStory(db, { task: 'Ship v2', due: '2026-08-01' });
+  assert.equal(s.due, '2026-08-01');
+
+  // A garbage due value is normalized away (no due field on the story).
+  const bad = createStory(db, { task: 'No date', due: 'soon-ish' });
+  assert.equal(bad.due, undefined);
+
+  // Patch updates the date; empty string clears it.
+  assert.equal(updateStory(db, s.id, { due: '2026-09-15' }).due, '2026-09-15');
+  assert.equal(updateStory(db, s.id, { due: '' }).due, undefined);
+
+  // Completing a story preserves the stored due date (the UI hides it when
+  // done, but the data survives a reopen — no destructive side effects).
+  const dated = createStory(db, { task: 'Dated', due: '2026-08-01' });
+  assert.equal(updateStory(db, dated.id, { status: 'done' }).due, '2026-08-01');
+});
+
+test('opened database exposes the due column (schema + migrate)', () => {
+  const db = openDatabase(':memory:');
+  const cols = db.prepare('PRAGMA table_info(stories)').all().map((c) => c.name);
+  assert.ok(cols.includes('due'), 'due column present after openDatabase');
+});
+
 test('seeded data preserves epics, done count, and comments', () => {
   const db = freshSeededDb();
   const stories = listStories(db);

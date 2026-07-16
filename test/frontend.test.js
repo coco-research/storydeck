@@ -120,6 +120,15 @@ test('boardSlug produces a filesystem-safe backup name from the title', () => {
   assert.equal(app.boardSlug(), 'alice-s-board');
 });
 
+test('story modal has a due-date field wired end-to-end', () => {
+  const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
+  assert.match(html, /id="new-task-due"[^>]*type="date"|type="date"[^>]*id="new-task-due"/);
+  assert.match(html, /function dueInfo\(/);
+  assert.match(html, /function dueChip\(/);
+  // The save payload forwards the chosen due date to the API.
+  assert.match(html, /due:\s*document\.getElementById\('new-task-due'\)\.value/);
+});
+
 test('boot banner carries no baked-in personal identity', () => {
   // Public-discipline guard: the boot banner must resolve its handle from
   // BOARD_USER at runtime, never hardcode a person's name in the shipped markup.

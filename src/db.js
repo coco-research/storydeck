@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS stories (
   urgent      INTEGER NOT NULL DEFAULT 0,           -- 0 | 1
   points      INTEGER NOT NULL DEFAULT 1,
   note        TEXT,
+  due         TEXT,                                 -- NULL | 'YYYY-MM-DD' target date
   position    INTEGER NOT NULL DEFAULT 0,           -- ordering within a column
   added       TEXT,
   completed   TEXT,
@@ -98,7 +99,16 @@ export function openDatabase(dbPath = DEFAULT_DB_PATH) {
   db.exec('PRAGMA journal_mode = WAL;');
   db.exec('PRAGMA foreign_keys = ON;');
   db.exec(SCHEMA);
+  migrate(db);
   return db;
+}
+
+// Additive, idempotent migrations for DBs created before a column existed.
+// `CREATE TABLE IF NOT EXISTS` never alters an existing table, so we backfill
+// new columns here without touching data.
+function migrate(db) {
+  const cols = db.prepare('PRAGMA table_info(stories)').all().map((c) => c.name);
+  if (!cols.includes('due')) db.exec('ALTER TABLE stories ADD COLUMN due TEXT');
 }
 
 // ── mapping between DB rows and the story shape the frontend expects ──────────
@@ -122,6 +132,7 @@ function rowToStory(db, row) {
   else if (row.work_status) story.workStatus = row.work_status;
   if (row.urgent) story.urgent = true;
   if (row.note) story.note = row.note;
+  if (row.due) story.due = row.due;
   return story;
 }
 
@@ -139,6 +150,12 @@ function normalizePoints(value, fallback = 1) {
   const n = Number.parseInt(value, 10);
   if (!Number.isFinite(n) || n < 0) return fallback;
   return n;
+}
+
+// Due date: accept an ISO calendar date (YYYY-MM-DD); anything else clears it.
+function normalizeDue(value) {
+  const s = String(value || '').trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
 }
 
 function nextPosition(db) {
@@ -159,8 +176,8 @@ export function createStory(db, input = {}) {
 
   const info = db
     .prepare(
-      `INSERT INTO stories (task, epic, status, work_status, urgent, points, note, position, added, completed, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO stories (task, epic, status, work_status, urgent, points, note, due, position, added, completed, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       task,
@@ -170,6 +187,7 @@ export function createStory(db, input = {}) {
       input.urgent ? 1 : 0,
       normalizePoints(input.points),
       input.note ? String(input.note) : null,
+      normalizeDue(input.due),
       position,
       input.added || ts.slice(0, 10),
       completed,
@@ -188,7 +206,7 @@ export function createStory(db, input = {}) {
 }
 
 const MUTABLE_FIELDS = new Set([
-  'task', 'project', 'status', 'workStatus', 'urgent', 'points', 'note', 'completed', 'added',
+  'task', 'project', 'status', 'workStatus', 'urgent', 'points', 'note', 'due', 'completed', 'added',
 ]);
 
 export function updateStory(db, id, patch = {}) {
@@ -203,6 +221,7 @@ export function updateStory(db, id, patch = {}) {
     urgent: existing.urgent,
     points: existing.points,
     note: existing.note,
+    due: existing.due,
     completed: existing.completed,
     added: existing.added,
   };
@@ -233,6 +252,9 @@ export function updateStory(db, id, patch = {}) {
       case 'note':
         next.note = patch.note ? String(patch.note) : null;
         break;
+      case 'due':
+        next.due = normalizeDue(patch.due);
+        break;
       case 'completed':
         next.completed = patch.completed || null;
         break;
@@ -251,7 +273,7 @@ export function updateStory(db, id, patch = {}) {
   }
 
   db.prepare(
-    `UPDATE stories SET task=?, epic=?, status=?, work_status=?, urgent=?, points=?, note=?, completed=?, added=?, updated_at=? WHERE id=?`
+    `UPDATE stories SET task=?, epic=?, status=?, work_status=?, urgent=?, points=?, note=?, due=?, completed=?, added=?, updated_at=? WHERE id=?`
   ).run(
     next.task,
     next.epic,
@@ -260,6 +282,7 @@ export function updateStory(db, id, patch = {}) {
     next.urgent,
     next.points,
     next.note,
+    next.due,
     next.completed,
     next.added,
     nowISO(),

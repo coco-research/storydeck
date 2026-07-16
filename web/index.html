@@ -290,6 +290,17 @@
   .meta-pill { background: var(--surface-strong); color: var(--text-2); }
   .points-pill { background: var(--accent-wash); color: var(--accent); border: 1px solid var(--accent-wash-strong); }
 
+  /* Due-date chip: flat bracketed marker, colored by urgency (retro palette). */
+  .due-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
+    padding: 1px 6px; margin-right: 6px; border-radius: 4px;
+    border: 1px solid var(--border); color: var(--muted); white-space: nowrap;
+  }
+  .due-chip.due-soon { color: var(--warning); border-color: var(--warning); }
+  .due-chip.due-over { color: var(--danger); border-color: var(--danger); }
+  .lr-title .due-chip { margin-left: 8px; margin-right: 0; }
+
   .task-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
   .action-btn {
     font-size: 11px; padding: 5px 9px; border-radius: 999px; border: 1px solid var(--border);
@@ -907,6 +918,8 @@
     <input type="text" id="new-task-project-custom" placeholder="New Epic name" style="display:none;margin-top:8px;" />
     <label>Sprint points</label>
     <input type="number" id="new-task-points" min="0" step="1" value="1" />
+    <label>Due date (optional)</label>
+    <input type="date" id="new-task-due" />
     <label>Note (optional)</label>
     <textarea id="new-task-note" rows="2" placeholder="Any context…"></textarea>
     <label>Status</label>
@@ -1410,6 +1423,26 @@ const STATE_TAG = { 'todo': 'TODO', 'in-progress': 'WIP', 'blocked': 'BLKD', 'do
 function sprintStateLabel(key) { return SPRINT_COLUMNS.find(c => c.key === key)?.label || 'To Do'; }
 function formatPoints(value) { const n = Number.parseInt(value, 10); return Number.isFinite(n) && n >= 0 ? n : DEFAULT_SPRINT_POINTS; }
 
+// Due-date urgency for a story. Returns null when there's no due date or the
+// story is done (a shipped story's deadline is moot). Otherwise a class +
+// short human label: overdue, today/tomorrow/Nd for the near term, else a date.
+function dueInfo(t) {
+  if (!t || !t.due || t.status === 'done') return null;
+  const d = new Date(t.due + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days = Math.round((d - today) / 86400000);
+  if (days < 0) return { cls: 'due-over', label: `${Math.abs(days)}d late` };
+  if (days === 0) return { cls: 'due-soon', label: 'today' };
+  if (days === 1) return { cls: 'due-soon', label: 'tomorrow' };
+  if (days <= 3) return { cls: 'due-soon', label: `${days}d` };
+  return { cls: 'due-ok', label: d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }) };
+}
+function dueChip(t) {
+  const info = dueInfo(t);
+  return info ? `<span class="due-chip ${info.cls}" title="Due ${t.due}">due ${info.label}</span>` : '';
+}
+
 function badgeHTML(t) {
   const bits = [];
   if (t.urgent && t.status !== 'done') bits.push(`<span class="badge badge-red">Urgent</span>`);
@@ -1468,6 +1501,7 @@ function renderCard(t) {
       <span class="tag tag-${state} tag-btn" role="button" tabindex="0" onclick="event.stopPropagation(); openStatusMenu(event, ${t.id})" title="Change status">${STATE_TAG[state]}</span>
       ${t.urgent && !isDone ? '<span class="bang" title="Urgent">!!</span>' : ''}
       <span class="meta-spacer"></span>
+      ${dueChip(t)}
       <span class="pts">${formatPoints(t.points)} pts</span>
       <div class="status-dot ${dotClass}" onclick="setSprintState(${t.id}, '${isDone ? 'todo' : 'done'}')" title="${isDone ? 'Move to To Do' : 'Move to Done'}"></div>
     </div>
@@ -1497,7 +1531,7 @@ function renderList(rows) {
       <span class="lr-id">#${t.id}</span>
       <span><span class="tag tag-${st} tag-btn" role="button" tabindex="0" onclick="openStatusMenu(event, ${t.id})" title="Change status">${STATE_TAG[st]}</span></span>
       <span class="lr-urg">${t.urgent && !isDone ? '!!' : ''}</span>
-      <span class="lr-title"><span>${escHTML(t.task)}</span><span class="leader"> …</span></span>
+      <span class="lr-title"><span>${escHTML(t.task)}</span>${dueChip(t)}<span class="leader"> …</span></span>
       <span class="lr-epic">${escHTML(normalizeEpic(t.project))}</span>
       <span class="lr-pts">${formatPoints(t.points)} pts</span>
     </div>`;
@@ -1921,6 +1955,7 @@ function openModal(state = 'todo') {
   document.getElementById('new-task-text').value = '';
   renderModalEpic(defaultEpicForNewStory());
   document.getElementById('new-task-points').value = DEFAULT_SPRINT_POINTS;
+  document.getElementById('new-task-due').value = '';
   document.getElementById('new-task-note').value = '';
   setModalState(state);
   toggleModalUrgent(false);
@@ -1936,6 +1971,7 @@ function openEditStory(id) {
   document.getElementById('new-task-text').value = t.task || '';
   renderModalEpic(t.project);
   document.getElementById('new-task-points').value = formatPoints(t.points);
+  document.getElementById('new-task-due').value = t.due || '';
   document.getElementById('new-task-note').value = t.note || '';
   setModalState(getSprintState(t));
   toggleModalUrgent(!!t.urgent);
@@ -1959,6 +1995,7 @@ function saveNewTask() {
     points,
     urgent: modalUrgent,
     note: document.getElementById('new-task-note').value.trim(),
+    due: document.getElementById('new-task-due').value,
     ...statePatch(modalState),
   };
 
