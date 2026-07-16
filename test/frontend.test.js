@@ -129,6 +129,14 @@ test('story modal has a due-date field wired end-to-end', () => {
   assert.match(html, /due:\s*document\.getElementById\('new-task-due'\)\.value/);
 });
 
+test('board offers a cross-status "due soon" quick filter', () => {
+  const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
+  assert.match(html, /function isDueSoon\(/);
+  // Offered only when open deadlines exist, and it spans all columns.
+  assert.match(html, /scope\.some\(isDueSoon\)[\s\S]*key: 'due-soon'/);
+  assert.match(html, /statusFilter === 'due-soon'\s*\?\s*visibleTasks\.filter\(isDueSoon\)/);
+});
+
 test('dashboard renders a deadlines panel from due dates', () => {
   const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
   // renderDash builds a "deadlines (N)" panel head and lists dated stories.

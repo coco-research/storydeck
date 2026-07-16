@@ -1199,13 +1199,21 @@ function renderStatusFilters() {
     : tasks.filter(t => normalizeEpic(t.project) === activeFilter);
   const scope = epicScope.filter(matchesSearch);
 
+  // If "due soon" was active but nothing qualifies anymore, fall back to ALL so
+  // the selection can't get stuck on a filter with no visible button.
+  if (statusFilter === 'due-soon' && !scope.some(isDueSoon)) statusFilter = 'all';
+
   const opts = [{ key: 'all', label: 'ALL' }].concat(
     SPRINT_COLUMNS.map(c => ({ key: c.key, label: STATE_TAG[c.key] }))
   );
+  // Cross-status "due soon" filter — only offered when there are open deadlines.
+  if (scope.some(isDueSoon)) opts.push({ key: 'due-soon', label: 'DUE' });
   opts.forEach(o => {
     const b = document.createElement('button');
     b.className = 'filter-btn' + (o.key === statusFilter ? ' active' : '');
-    const count = o.key === 'all' ? scope.length : scope.filter(t => getSprintState(t) === o.key).length;
+    const count = o.key === 'all' ? scope.length
+      : o.key === 'due-soon' ? scope.filter(isDueSoon).length
+      : scope.filter(t => getSprintState(t) === o.key).length;
     b.textContent = o.label + (o.key !== 'all' || count > 0 ? ` ${count}` : '');
     b.onclick = () => { statusFilter = o.key; render(); };
     bar.appendChild(b);
@@ -1442,6 +1450,14 @@ function dueChip(t) {
   const info = dueInfo(t);
   return info ? `<span class="due-chip ${info.cls}" title="Due ${t.due}">due ${info.label}</span>` : '';
 }
+// "Due soon" = an open story that is overdue or due within the next 7 days.
+function isDueSoon(t) {
+  if (!t || !t.due || t.status === 'done') return false;
+  const d = new Date(t.due + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((d - today) / 86400000) <= 7; // negatives = overdue, included
+}
 
 function badgeHTML(t) {
   const bits = [];
@@ -1552,8 +1568,11 @@ function render() {
   const visibleTasks = base.filter(matchesSearch);
   const statusTasks = statusFilter === 'all'
     ? visibleTasks
+    : statusFilter === 'due-soon'
+    ? visibleTasks.filter(isDueSoon)
     : visibleTasks.filter(t => getSprintState(t) === statusFilter);
-  const columns = statusFilter === 'all'
+  // 'due-soon' spans columns, so keep all columns; only a real state isolates one.
+  const columns = (statusFilter === 'all' || statusFilter === 'due-soon')
     ? SPRINT_COLUMNS
     : SPRINT_COLUMNS.filter(c => c.key === statusFilter);
 
