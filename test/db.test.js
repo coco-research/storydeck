@@ -52,6 +52,17 @@ test('due date round-trips on create, patch, and clears when done', () => {
   assert.equal(updateStory(db, dated.id, { status: 'done' }).due, '2026-08-01');
 });
 
+test('due dates survive a backup/restore (replaceAll) round-trip', () => {
+  const db = openDatabase(':memory:');
+  createStory(db, { task: 'dated', due: '2026-08-01' });
+  createStory(db, { task: 'no date' });
+  const snapshot = listStories(db); // what /api/export serializes
+  replaceAll(db, snapshot);         // what /api/import restores
+  const restored = listStories(db);
+  assert.equal(restored.find((s) => s.task === 'dated').due, '2026-08-01');
+  assert.equal(restored.find((s) => s.task === 'no date').due, undefined);
+});
+
 test('opened database exposes the due column (schema + migrate)', () => {
   const db = openDatabase(':memory:');
   const cols = db.prepare('PRAGMA table_info(stories)').all().map((c) => c.name);
