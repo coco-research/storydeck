@@ -129,6 +129,14 @@ test('story modal has a due-date field wired end-to-end', () => {
   assert.match(html, /due:\s*document\.getElementById\('new-task-due'\)\.value/);
 });
 
+test('dashboard renders a deadlines panel from due dates', () => {
+  const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
+  // renderDash builds a "deadlines (N)" panel head and lists dated stories.
+  assert.match(html, /deadlines \(\$\{dated\.length\}\)/);
+  assert.match(html, /const dated = open\.filter\(t => t\.due\)/);
+  assert.match(html, /overdueCount/);
+});
+
 test('boot banner carries no baked-in personal identity', () => {
   // Public-discipline guard: the boot banner must resolve its handle from
   // BOARD_USER at runtime, never hardcode a person's name in the shipped markup.

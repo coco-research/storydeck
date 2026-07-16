@@ -1777,12 +1777,25 @@ function renderDash(rows) {
     ? urgent.map(t => `<div class="urgent-line"><span class="id">#${t.id}</span> ${escHTML(t.task)} <span style="color:var(--faint-text)">[${escHTML(normalizeEpic(t.project))}]</span></div>`).join('')
     : `<div class="urgent-line" style="color:var(--faint-text)">no open urgent stories</div>`;
 
+  // Deadlines: open stories with a due date, soonest first. Overdue floats to
+  // the top (dates sort ascending), each row tagged with the same urgency chip.
+  const dated = open.filter(t => t.due).sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0));
+  const overdueCount = dated.filter(t => (dueInfo(t) || {}).cls === 'due-over').length;
+  const deadlineHTML = dated.length
+    ? dated.slice(0, 8).map(t => {
+        const info = dueInfo(t) || { cls: 'due-ok', label: t.due };
+        return `<div class="urgent-line"><span class="id">#${t.id}</span> ${escHTML(t.task)} <span class="due-chip ${info.cls}">due ${info.label}</span></div>`;
+      }).join('')
+    : `<div class="urgent-line" style="color:var(--faint-text)">no scheduled deadlines</div>`;
+  const deadlineHead = `deadlines (${dated.length})` + (overdueCount ? ` · ${overdueCount} overdue` : '');
+
   mount.innerHTML = `
     <div class="tiles">${tiles}</div>
     <div class="dash-cols">
       <section class="panel-card"><div class="panel-head">by status · ${donePct}% done</div><div class="panel-body">${statusRows}</div></section>
       <section class="panel-card"><div class="panel-head">urgent queue (${urgent.length})</div><div class="panel-body">${urgentHTML}</div></section>
     </div>
+    <section class="panel-card"><div class="panel-head">${deadlineHead}</div><div class="panel-body">${deadlineHTML}</div></section>
     <section class="panel-card"><div class="panel-head">by epic (${epicRows.length})</div><div class="panel-body">${epicHTML}</div></section>`;
 }
 
