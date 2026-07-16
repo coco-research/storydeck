@@ -88,6 +88,12 @@ test('modals expose accessible dialog semantics', () => {
   }
 });
 
+test('ask bar has an AI provider status chip wired to the key modal', () => {
+  const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
+  assert.match(html, /id="ai-status"[^>]*onclick="openAiKeyModal\(\)"/);
+  assert.match(html, /function refreshAiStatusBadge\(/);
+});
+
 test('statePatch maps sprint states to API patches', () => {
   const app = buildApp();
   assert.deepEqual(app.statePatch('done'), { status: 'done' });

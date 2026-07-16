@@ -727,6 +727,17 @@
   .ai-send:hover { filter: brightness(1.08); }
   .ai-send:disabled { opacity: .5; cursor: progress; }
   .ai-bar:focus-within { border-color: var(--accent); }
+  /* Active-provider chip: compact, bracketed, monospace; opens the AI-key modal. */
+  .ai-status {
+    flex: 0 0 auto; background: transparent; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 3px; padding: 4px 9px;
+    font-family: inherit; font-size: 11px; letter-spacing: .04em; cursor: pointer;
+    text-transform: lowercase; white-space: nowrap;
+  }
+  .ai-status:hover { color: var(--text); border-color: var(--accent); }
+  .ai-status.ai-on { color: var(--success); border-color: var(--success); }
+  .ai-status.ai-off { color: var(--faint-text); }
+  .ai-status:focus-visible { outline: none; box-shadow: var(--ring); }
 
   .ai-chat {
     position: relative; border: 1px solid var(--border); border-radius: 3px;
@@ -848,6 +859,8 @@
            placeholder="talk to the board — “add a story to fix the mobile nav, urgent” · “mark #12 done” · “how many WIP?”"
            aria-label="Ask the AI assistant" />
     <button type="button" class="ai-send" id="ai-send" onclick="aiSend()">send</button>
+    <button type="button" class="ai-status" id="ai-status" onclick="openAiKeyModal()"
+            title="AI provider — click to connect or switch a key" aria-label="AI provider status">· · ·</button>
   </div>
   <div class="ai-chat" id="ai-chat" role="log" aria-live="polite" hidden>
     <div class="ai-chat-tools">
@@ -1572,6 +1585,31 @@ async function refreshAiKeyStatus() {
     el.textContent = 'Could not read AI status.';
   }
 }
+// Reflect the active AI provider/model in the ask-bar chip (never shows the key).
+async function refreshAiStatusBadge() {
+  const el = document.getElementById('ai-status');
+  if (!el) return;
+  try {
+    const res = await fetch(API + '/api/ai/health');
+    const h = await res.json();
+    el.classList.remove('ai-on', 'ai-off');
+    if (h.enabled) {
+      el.classList.add('ai-on');
+      el.textContent = h.model && h.model !== 'default' ? `${h.provider} · ${h.model}` : h.provider;
+      el.title = `AI: ${h.provider} (model ${h.model || 'default'}) — click to switch key`;
+    } else {
+      const hasKey = Object.values(h.keysPresent || {}).some(Boolean);
+      el.classList.add('ai-off');
+      el.textContent = hasKey ? 'ai off' : '+ connect ai';
+      el.title = hasKey ? 'A key is present but AI is off — click to fix' : 'No AI key connected — click to add one';
+    }
+  } catch (e) {
+    el.classList.remove('ai-on');
+    el.classList.add('ai-off');
+    el.textContent = 'ai —';
+    el.title = 'Could not read AI status';
+  }
+}
 function openAiKeyModal() {
   const err = document.getElementById('ai-key-err');
   if (err) { err.hidden = true; err.textContent = ''; }
@@ -1602,6 +1640,7 @@ async function saveAiKey() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Could not save the key.');
     await refreshAiKeyStatus();
+    refreshAiStatusBadge();
     closeAiKeyModal();
   } catch (e) {
     err.hidden = false; err.textContent = e.message;
@@ -2161,6 +2200,7 @@ initView();
 initDensity();
 initSearch();
 initAI();
+refreshAiStatusBadge();
 loadState();
 </script>
 </body>
