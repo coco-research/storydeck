@@ -129,6 +129,18 @@ test('story modal has a due-date field wired end-to-end', () => {
   assert.match(html, /due:\s*document\.getElementById\('new-task-due'\)\.value/);
 });
 
+test('epic/status filters and boot-seen persist across refreshes', () => {
+  const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
+  // Filters initialize from localStorage and are re-saved on every render.
+  assert.match(html, /let activeFilter = restore\(FILTER_KEY, 'All'\)/);
+  assert.match(html, /let statusFilter = restore\(STATUS_FILTER_KEY, 'all'\)/);
+  assert.match(html, /persist\(FILTER_KEY, activeFilter\)/);
+  assert.match(html, /persist\(STATUS_FILTER_KEY, statusFilter\)/);
+  // Boot auto-runs only until seen once; the button still replays it.
+  assert.match(html, /let bootShown = restore\(BOOT_KEY, ''\) === '1'/);
+  assert.match(html, /persist\(BOOT_KEY, '1'\); runBoot\(\)/);
+});
+
 test('mck (McKinsey white/blue) theme is defined and selectable', () => {
   const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
   assert.match(html, /html\[data-theme="mck"\]\s*\{/);        // palette block

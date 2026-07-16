@@ -1014,8 +1014,13 @@ const UNASSIGNED_EPIC = 'Unassigned';
 let CORE_EPICS = ['Website','Mobile','Marketing','Ops','Personal','GitHub'];
 
 let tasks = [];
-let activeFilter = 'All';
-let statusFilter = 'all';
+// Persist the UI scope so a refresh stays where you were (epic + status filter).
+const FILTER_KEY = 'storydeck-epic-filter';
+const STATUS_FILTER_KEY = 'storydeck-status-filter';
+function persist(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
+function restore(key, fallback) { try { return localStorage.getItem(key) || fallback; } catch (e) { return fallback; } }
+let activeFilter = restore(FILTER_KEY, 'All');
+let statusFilter = restore(STATUS_FILTER_KEY, 'all');
 let searchQuery = '';
 let density = 'comfortable';
 let editingNoteId = null;
@@ -1058,7 +1063,7 @@ async function loadState() {
     applyBranding(data.user, data.title);
     clearConnError();
     render();
-    if (!bootShown) { bootShown = true; runBoot(); }
+    if (!bootShown) { bootShown = true; persist(BOOT_KEY, '1'); runBoot(); }
   } catch (err) {
     showConnError(`Can't reach the local board server. Start it with "node src/server.js" (or the launcher), then reload. [${err.message}]`);
   }
@@ -1587,6 +1592,9 @@ function renderList(rows) {
 function render() {
   renderFilters();
   renderStatusFilters();
+  // Remember the current scope (after any guard reset) so a refresh restores it.
+  persist(FILTER_KEY, activeFilter);
+  persist(STATUS_FILTER_KEY, statusFilter);
 
   const base = activeFilter === 'All' ? tasks
     : activeFilter === 'Urgent' ? tasks.filter(t => t.urgent && t.status !== 'done')
@@ -2361,7 +2369,10 @@ document.addEventListener('keydown', e => {
 })();
 
 // ── init ───────────────────────────────────────────────────────────────────
-let bootShown = false;
+// Boot is a one-time welcome: auto-run only until it's been seen once, then
+// only on the explicit "boot" button (runBoot). Survives refreshes.
+const BOOT_KEY = 'storydeck-boot-seen';
+let bootShown = restore(BOOT_KEY, '') === '1';
 initTheme();
 initView();
 initDensity();
