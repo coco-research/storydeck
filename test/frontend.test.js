@@ -75,6 +75,19 @@ function buildApp() {
 const seed = JSON.parse(readFileSync(join(ROOT, 'data', 'seed.sample.json'), 'utf8'))
   .map((s) => ({ ...s, comments: Array.isArray(s.comments) ? s.comments : [] }));
 
+test('modals expose accessible dialog semantics', () => {
+  // Static assertion on the shipped markup: both dialogs must be labelled and
+  // marked as modal so screen readers announce them and focus tooling can trap.
+  const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
+  const dialogs = html.match(/<div class="modal"[^>]*>/g) || [];
+  assert.equal(dialogs.length, 2, 'expected two .modal dialogs');
+  for (const tag of dialogs) {
+    assert.match(tag, /role="dialog"/);
+    assert.match(tag, /aria-modal="true"/);
+    assert.match(tag, /aria-labelledby="/);
+  }
+});
+
 test('statePatch maps sprint states to API patches', () => {
   const app = buildApp();
   assert.deepEqual(app.statePatch('done'), { status: 'done' });

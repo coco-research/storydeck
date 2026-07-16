@@ -874,7 +874,7 @@
 
 <!-- Add / edit story modal -->
 <div class="modal-overlay" id="modal">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <h2 id="modal-title">Add story</h2>
     <label>Story</label>
     <input type="text" id="new-task-text" placeholder="What story needs to move forward?" />
@@ -901,8 +901,8 @@
 </div>
 
 <div class="modal-overlay" id="ai-key-modal">
-  <div class="modal">
-    <h2>Connect an AI key</h2>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ai-key-title">
+    <h2 id="ai-key-title">Connect an AI key</h2>
     <p class="ai-key-note" id="ai-key-status">Checking current status…</p>
     <label>Provider</label>
     <div class="seg-group" id="ai-key-provider" role="group" aria-label="AI provider">
@@ -2090,7 +2090,7 @@ document.addEventListener('keydown', e => {
     document.getElementById('story-search').focus();
     return;
   }
-  if (e.key === 'Escape') { closeStatusMenu(); closeModal(); cancelNote(); }
+  if (e.key === 'Escape') { closeStatusMenu(); closeModal(); closeAiKeyModal(); cancelNote(); }
   if (e.key === 'n' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); openModal(); }
   if (!inField && !openSelect) {
     if (e.key === 'v') { e.preventDefault(); setView((document.documentElement.dataset.view === 'dash') ? 'board' : 'dash'); }
@@ -2102,6 +2102,57 @@ document.addEventListener('keydown', e => {
     if (document.activeElement?.id === 'new-task-text') saveNewTask();
   }
 });
+
+// ── A11y: dialog focus management (trap + restore) ───────────────────────────
+// Additive and guarded — no changes to the many open/close call sites. Observes
+// the `.open` class on `.modal-overlay` dialogs to move focus in on open, trap
+// Tab within the dialog, and restore focus to the trigger on close. Skips safely
+// where MutationObserver is unavailable (e.g. the test sandbox).
+(function setupModalA11y() {
+  if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
+  const overlays = () => Array.from(document.querySelectorAll('.modal-overlay'));
+  function focusables(modal) {
+    return Array.from(modal.querySelectorAll(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )).filter((el) => el.offsetParent !== null && (!el.closest || !el.closest('[hidden]')));
+  }
+  let restoreTo = null;
+  function onOpen(overlay) {
+    restoreTo = document.activeElement;
+    const modal = overlay.querySelector('.modal');
+    if (modal && !modal.contains(document.activeElement)) {
+      const f = focusables(modal);
+      if (f[0]) f[0].focus();
+    }
+  }
+  function onClose() {
+    if (restoreTo && typeof restoreTo.focus === 'function') { try { restoreTo.focus(); } catch (e) {} }
+    restoreTo = null;
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const open = overlays().find((o) => o.classList.contains('open'));
+    if (!open) return;
+    const modal = open.querySelector('.modal');
+    const f = modal ? focusables(modal) : [];
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1], active = document.activeElement;
+    if (!modal.contains(active)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+  });
+  if (typeof MutationObserver === 'undefined') return;
+  const obs = new MutationObserver((muts) => {
+    for (const m of muts) {
+      const el = m.target;
+      const isOpen = el.classList && el.classList.contains('open');
+      const wasOpen = m.oldValue ? m.oldValue.split(/\s+/).includes('open') : false;
+      if (isOpen && !wasOpen) onOpen(el);
+      else if (!isOpen && wasOpen) onClose();
+    }
+  });
+  overlays().forEach((o) => obs.observe(o, { attributes: true, attributeFilter: ['class'], attributeOldValue: true }));
+})();
 
 // ── init ───────────────────────────────────────────────────────────────────
 let bootShown = false;
