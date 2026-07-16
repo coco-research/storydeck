@@ -180,6 +180,16 @@ test('import rejects a malformed story and leaves the board unchanged', async ()
   assert.equal(after.length, before.length); // rollback / no-op: board intact
 });
 
+test('POST /api/reset clears the board to empty (backup happens server-side)', async () => {
+  const res = await fetch(`${base}/api/reset`, { method: 'POST' });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.deepEqual(data.stories, []);
+  // And the persisted state is now empty too.
+  const after = (await (await fetch(`${base}/api/state`)).json()).stories;
+  assert.equal(after.length, 0);
+});
+
 test('unknown API endpoint returns 404', async () => {
   const res = await fetch(`${base}/api/nope`);
   assert.equal(res.status, 404);

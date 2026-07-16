@@ -579,6 +579,7 @@
     text-transform: uppercase; letter-spacing: .08em; font-size: 12px; padding: 7px 6px;
   }
   .header-actions .secondary-btn:hover { background: transparent; border-color: transparent; color: var(--text); }
+  .header-actions .danger-btn:hover { color: var(--danger); }
   .header-actions .secondary-btn::before { content: "[ "; color: var(--faint-text); }
   .header-actions .secondary-btn::after  { content: " ]"; color: var(--faint-text); }
 
@@ -821,6 +822,7 @@
       <button class="add-btn secondary-btn" onclick="exportJSON()" title="Save a portable copy of the board (e.g. to move to another Mac)">Backup</button>
       <button class="add-btn secondary-btn" onclick="openImportPicker()" title="Restore the board from a backup file (replaces current stories)">Restore</button>
       <button class="add-btn secondary-btn" id="ai-key-btn" onclick="openAiKeyModal()" title="Connect your own AI key (OpenAI / Anthropic / Cursor)">AI key</button>
+      <button class="add-btn secondary-btn danger-btn" onclick="startFresh()" title="Clear all stories and start an empty board (a backup is saved first)">Start fresh</button>
       <input type="file" id="import-json-input" accept="application/json,.json" style="display:none" onchange="importJSON(event)" />
     </div>
   </header>
@@ -1949,6 +1951,26 @@ async function exportJSON() {
   } catch (err) { showConnError(`Backup failed: ${err.message}`); }
 }
 function openImportPicker() { document.getElementById('import-json-input').click(); }
+
+// Guarded "start fresh": clears the board to empty. Destructive, so we require an
+// explicit confirm; the server writes a timestamped backup first, so it's always
+// recoverable via Restore.
+async function startFresh() {
+  const n = Array.isArray(tasks) ? tasks.length : 0;
+  const msg = n
+    ? `Clear all ${n} stories and start an empty board?\n\nA backup is saved automatically first, so you can Restore it later.`
+    : 'Start with an empty board?';
+  if (!window.confirm(msg)) return;
+  try {
+    const res = await fetch(API + '/api/reset', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not reset the board.');
+    tasks = data.stories || [];
+    render();
+  } catch (e) {
+    showConnError(e.message || 'Could not reset the board.');
+  }
+}
 function importJSON(event) {
   const file = event.target.files?.[0];
   if (!file) return;

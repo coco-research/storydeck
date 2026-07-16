@@ -166,6 +166,19 @@ async function handleApi(db, req, res, path, url) {
     }
   }
 
+  // POST /api/reset → back up, then clear to an empty board ("Start fresh").
+  // Mainly for new public users who want to drop the demo sample and start
+  // clean. A timestamped backup is written first so it's always recoverable.
+  if (path === '/api/reset' && method === 'POST') {
+    try {
+      backup(db);
+      const result = replaceAll(db, []);
+      return sendJSON(res, 200, { stories: result });
+    } catch (err) {
+      return sendJSON(res, 500, { error: `Reset failed: ${err.message}. Your board was not changed.` });
+    }
+  }
+
   // POST /api/stories → create
   if (path === '/api/stories' && method === 'POST') {
     const body = await readBody(req);
