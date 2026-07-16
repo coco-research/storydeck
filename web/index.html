@@ -85,14 +85,16 @@
   /* McKinsey: white paper, Deep Blue (#051C2C) type, electric McKinsey blue
      (#2251FF) accent. Same retro terminal layout, corporate light palette. */
   html[data-theme="mck"] {
-    --bg: #ffffff; --panel: #eef3fa; --panel-soft: #f6f9fd; --panel-warm: #eef3fa;
-    --surface-strong: #e1eaf6; --text: #051c2c; --text-2: #1b3a52; --muted: #5b7183;
-    --faint-text: #8797a5; --faint: #cdd8e3; --line: #c3d2e2; --border: #cdd8e3;
-    --accent: #2251ff; --accent-dark: #1a3fd0; --accent-2: #0b8bd6; --info: #0679a8;
+    /* Monochrome: electric McKinsey blue (#2251FF) + white, neutral cool greys
+       only. One blue everywhere — no secondary/teal blue tones. */
+    --bg: #ffffff; --panel: #eef2fb; --panel-soft: #f7f9fe; --panel-warm: #eef2fb;
+    --surface-strong: #e3e9f7; --text: #101828; --text-2: #39414f; --muted: #6b7482;
+    --faint-text: #99a1ad; --faint: #d4dcec; --line: #cbd5ea; --border: #d4dcec;
+    --accent: #2251ff; --accent-dark: #1a3fd0; --accent-2: #2251ff; --info: #2251ff;
     --accent-wash: rgba(34,81,255,0.10); --accent-wash-strong: rgba(34,81,255,0.30);
-    --clay: #b7791f; --danger: #d0021b; --success: #027a48; --warning: #b7791f;
+    --clay: #2251ff; --danger: #d0021b; --success: #027a48; --warning: #b7791f;
     --ok: #027a48;
-    --shadow: 0 10px 26px -16px rgba(5,28,44,0.30);
+    --shadow: 0 10px 26px -16px rgba(16,24,40,0.28);
     --ring: 0 0 0 2px rgba(34,81,255,0.45);
   }
   /* Semantic washes retuned for white so badges/status chips stay legible. */
