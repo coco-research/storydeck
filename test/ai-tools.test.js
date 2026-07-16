@@ -38,6 +38,31 @@ test('update_story edits fields and validates status', () => {
   assert.throws(() => tools.update_story({ id: 99999, task: 'x' }), /not found/);
 });
 
+test('due dates flow through add_story, update_story, and summary lines', () => {
+  const db = freshDb();
+  const tools = boardTools(db);
+  const { id, story } = tools.add_story({ task: 'Ship it', due: '2026-08-01' });
+  assert.equal(story.due, '2026-08-01');
+  assert.match(tools.search_stories({ query: 'Ship it' }).results[0], /due 2026-08-01/);
+
+  // Update the date, then clear it with an empty string.
+  assert.equal(tools.update_story({ id, due: '2026-09-15' }).story.due, '2026-09-15');
+  assert.equal(tools.update_story({ id, due: '' }).story.due, undefined);
+});
+
+test('get_board_summary lists open deadlines soonest-first', () => {
+  const db = freshDb();
+  const tools = boardTools(db);
+  tools.add_story({ task: 'later', due: '2026-09-10' });
+  tools.add_story({ task: 'sooner', due: '2026-08-01' });
+  tools.add_story({ task: 'no date' });
+  tools.add_story({ task: 'done dated', due: '2026-07-01', status: 'done' });
+  const sum = tools.get_board_summary();
+  assert.equal(sum.deadlines.length, 2); // done story excluded
+  assert.match(sum.deadlines[0], /sooner/); // 08-01 before 09-10
+  assert.match(sum.deadlines[1], /later/);
+});
+
 test('complete_story marks done', () => {
   const db = freshDb();
   const tools = boardTools(db);

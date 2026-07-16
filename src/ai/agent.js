@@ -142,7 +142,9 @@ export async function runAssistant({ db, message, model, history } = {}) {
   if (!msg) throw new AIError('Message is required', { status: 400 });
   if (msg.length > 4000) throw new AIError('Message too long', { status: 400 });
 
-  const prompt = `${SYSTEM_PROMPT}\n\n${buildContext(db)}\n\n${buildKnownFacts(db, msg)}${buildTranscript(history)}USER: ${msg}\n\nJSON:`;
+  const now = new Date();
+  const dateLine = `TODAY: ${now.toISOString().slice(0, 10)} (${now.toLocaleDateString('en-US', { weekday: 'long' })}). Resolve relative dates ("today", "Friday", "next week") against this and set due dates as YYYY-MM-DD.`;
+  const prompt = `${SYSTEM_PROMPT}\n\n${dateLine}\n\n${buildContext(db)}\n\n${buildKnownFacts(db, msg)}${buildTranscript(history)}USER: ${msg}\n\nJSON:`;
   const runner = _runner || defaultRunner;
   const raw = await runner(prompt, { model });
 

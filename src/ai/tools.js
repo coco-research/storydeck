@@ -31,7 +31,8 @@ function toSummaryLine(s) {
   const state = s.status === 'done' ? 'done' : (s.workStatus || 'todo');
   const tag = { todo: 'TODO', 'in-progress': 'WIP', blocked: 'BLKD', done: 'DONE' }[state];
   return `#${s.id} [${tag}] ${s.urgent && s.status !== 'done' ? '!! ' : ''}${s.task}`
-    + (s.project ? ` · ${s.project}` : '') + ` · ${s.points}pts`;
+    + (s.project ? ` · ${s.project}` : '') + ` · ${s.points}pts`
+    + (s.due && s.status !== 'done' ? ` · due ${s.due}` : '');
 }
 
 /**
@@ -50,6 +51,7 @@ export function boardTools(db) {
         points: args.points,
         urgent: !!args.urgent,
         note: args.note != null ? String(args.note) : undefined,
+        due: args.due != null ? String(args.due) : undefined,
         ...statePatch(state),
       });
       return { ok: true, id: story.id, story, summary: toSummaryLine(story) };
@@ -63,6 +65,7 @@ export function boardTools(db) {
       if (args.epic != null) patch.project = String(args.epic);
       if (args.points != null) patch.points = args.points;
       if (args.urgent != null) patch.urgent = !!args.urgent;
+      if (args.due != null) patch.due = String(args.due); // '' clears it
       if (args.status != null) {
         if (!VALID_STATES.has(args.status)) throw new Error(`invalid status: ${args.status}`);
         Object.assign(patch, statePatch(args.status));
@@ -109,6 +112,11 @@ export function boardTools(db) {
       const all = listStories(db);
       const by = (st) => all.filter((s) => (s.status === 'done' ? 'done' : (s.workStatus || 'todo')) === st);
       const urgent = all.filter((s) => s.urgent && s.status !== 'done').map(toSummaryLine);
+      // Open, dated stories soonest-first so the model can answer deadline questions.
+      const deadlines = all
+        .filter((s) => s.due && s.status !== 'done')
+        .sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0))
+        .map(toSummaryLine);
       return {
         total: all.length,
         todo: by('todo').length,
@@ -117,6 +125,7 @@ export function boardTools(db) {
         done: by('done').length,
         open_points: all.filter((s) => s.status !== 'done').reduce((n, s) => n + (s.points || 0), 0),
         urgent,
+        deadlines,
       };
     },
 
@@ -149,13 +158,14 @@ export const TOOL_SPECS = [
         urgent: { type: 'boolean', description: 'Mark as urgent' },
         status: { type: 'string', enum: ['todo', 'in-progress', 'blocked', 'done'] },
         note: { type: 'string' },
+        due: { type: 'string', description: 'Due date as YYYY-MM-DD (optional)' },
       },
       required: ['task'],
     },
   },
   {
     name: 'update_story',
-    description: 'Edit an existing story by id (title, epic, points, urgent, status).',
+    description: 'Edit an existing story by id (title, epic, points, urgent, status, due date).',
     parameters: {
       type: 'object',
       properties: {
@@ -165,6 +175,7 @@ export const TOOL_SPECS = [
         points: { type: 'integer' },
         urgent: { type: 'boolean' },
         status: { type: 'string', enum: ['todo', 'in-progress', 'blocked', 'done'] },
+        due: { type: 'string', description: 'Due date as YYYY-MM-DD; empty string clears it' },
       },
       required: ['id'],
     },
@@ -190,7 +201,7 @@ export const TOOL_SPECS = [
   },
   {
     name: 'get_board_summary',
-    description: 'Get counts by column, open points, and the urgent queue.',
+    description: 'Get counts by column, open points, the urgent queue, and open deadlines (soonest first).',
     parameters: { type: 'object', properties: {} },
   },
   {
