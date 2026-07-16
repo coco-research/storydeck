@@ -18,12 +18,14 @@ selectable terminal themes (gruvbox / amber / green / light).
 
 - **Kanban board** — To Do / In Progress / Blocked / Done, drag-and-drop, reorder.
 - **Epics** — group stories into projects; custom epics auto-become filter buttons.
-- **Stories** — sprint points, notes, inline comments, urgent flag, per-story status.
-- **Views** — full board, compact list, and a dashboard with counts + progress bars.
-- **Search & prefilters** — filter by text or by status in either view.
+- **Stories** — sprint points, notes, inline comments, urgent flag, per-story status,
+  and optional **due dates** with overdue/soon urgency chips.
+- **Views** — full board, compact list, and a dashboard with counts, progress bars,
+  and a **deadlines** panel (open stories by due date, overdue first).
+- **Search & prefilters** — filter by text, by status, or by **due soon** in either view.
 - **Boot screen** — a BIOS/POST-style splash with a weekly standup summary.
 - **AI assistant** *(optional)* — an agentic "ask" bar that can add, update, comment,
-  complete, and focus the board via natural language.
+  complete, set due dates, and focus the board via natural language.
 - **Backup / Restore** — export or import the whole board as JSON.
 - **Desktop app** — runs as an Electron window, or as a plain local web server.
 
