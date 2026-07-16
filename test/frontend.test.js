@@ -129,6 +129,14 @@ test('story modal has a due-date field wired end-to-end', () => {
   assert.match(html, /due:\s*document\.getElementById\('new-task-due'\)\.value/);
 });
 
+test('mck (McKinsey white/blue) theme is defined and selectable', () => {
+  const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
+  assert.match(html, /html\[data-theme="mck"\]\s*\{/);        // palette block
+  assert.match(html, /--accent:\s*#2251ff/i);                  // electric McKinsey blue
+  assert.match(html, /data-theme-val="mck"[^>]*onclick="setTheme\('mck'\)"/); // switcher button
+  assert.match(html, /\['gruvbox', 'amber', 'green', 'light', 'mck'\]/);      // accepted by setTheme
+});
+
 test('board offers a cross-status "due soon" quick filter', () => {
   const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
   assert.match(html, /function isDueSoon\(/);

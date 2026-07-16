@@ -82,6 +82,29 @@
   html[data-theme="light"] .action-btn.blocked-btn:hover,
   html[data-theme="light"] .action-btn.delete-btn:hover { background: rgba(157,0,6,0.10); }
 
+  /* McKinsey: white paper, Deep Blue (#051C2C) type, electric McKinsey blue
+     (#2251FF) accent. Same retro terminal layout, corporate light palette. */
+  html[data-theme="mck"] {
+    --bg: #ffffff; --panel: #eef3fa; --panel-soft: #f6f9fd; --panel-warm: #eef3fa;
+    --surface-strong: #e1eaf6; --text: #051c2c; --text-2: #1b3a52; --muted: #5b7183;
+    --faint-text: #8797a5; --faint: #cdd8e3; --line: #c3d2e2; --border: #cdd8e3;
+    --accent: #2251ff; --accent-dark: #1a3fd0; --accent-2: #0b8bd6; --info: #0679a8;
+    --accent-wash: rgba(34,81,255,0.10); --accent-wash-strong: rgba(34,81,255,0.30);
+    --clay: #b7791f; --danger: #d0021b; --success: #027a48; --warning: #b7791f;
+    --ok: #027a48;
+    --shadow: 0 10px 26px -16px rgba(5,28,44,0.30);
+    --ring: 0 0 0 2px rgba(34,81,255,0.45);
+  }
+  /* Semantic washes retuned for white so badges/status chips stay legible. */
+  html[data-theme="mck"] .badge-red { background: rgba(208,2,27,0.10); }
+  html[data-theme="mck"] .badge-yellow { background: rgba(183,121,31,0.14); }
+  html[data-theme="mck"] .badge-green { background: rgba(2,122,72,0.12); }
+  html[data-theme="mck"] .status-label.done-label { background: rgba(2,122,72,0.12); }
+  html[data-theme="mck"] .action-btn.done-btn:hover { background: rgba(2,122,72,0.12); }
+  html[data-theme="mck"] .action-btn.progress-btn:hover { background: rgba(34,81,255,0.10); }
+  html[data-theme="mck"] .action-btn.blocked-btn:hover,
+  html[data-theme="mck"] .action-btn.delete-btn:hover { background: rgba(208,2,27,0.10); }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: var(--font-sans);
@@ -871,6 +894,7 @@
       <button type="button" class="seg-btn" data-theme-val="amber" aria-pressed="false" onclick="setTheme('amber')">amber</button>
       <button type="button" class="seg-btn" data-theme-val="green" aria-pressed="false" onclick="setTheme('green')">green</button>
       <button type="button" class="seg-btn" data-theme-val="light" aria-pressed="false" onclick="setTheme('light')">light</button>
+      <button type="button" class="seg-btn" data-theme-val="mck" aria-pressed="false" onclick="setTheme('mck')">mck</button>
     </div>
     <button type="button" class="add-btn secondary-btn" id="boot-btn" onclick="runBoot()" title="Replay the boot sequence + weekly standup">▸ boot</button>
   </div>
@@ -1617,7 +1641,7 @@ function render() {
 // ── theme (gruvbox / amber / green / light) ─────────────────────────────────
 const THEME_KEY = 'storydeck-theme';
 function setTheme(name) {
-  const theme = ['gruvbox', 'amber', 'green', 'light'].includes(name) ? name : 'gruvbox';
+  const theme = ['gruvbox', 'amber', 'green', 'light', 'mck'].includes(name) ? name : 'gruvbox';
   if (document.documentElement) document.documentElement.dataset.theme = theme;
   try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
   document.querySelectorAll('#theme-seg .seg-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.themeVal === theme ? 'true' : 'false'));

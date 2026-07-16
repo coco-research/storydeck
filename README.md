@@ -3,7 +3,7 @@
 A **local-first, retro-terminal Kanban board** for your stories, tasks, and epics.
 Runs entirely on your machine — your data lives in a local SQLite file and never
 leaves the device. Optional AI assistant, boot screen, dashboard, and four
-selectable terminal themes (gruvbox / amber / green / light).
+selectable terminal themes (gruvbox / amber / green / light / mck).
 
 ![StoryDeck board](docs/board.png)
 
