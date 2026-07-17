@@ -52,7 +52,7 @@ function buildApp() {
 
   const expose = `; return {
     matchesSearch, statePatch, getProjects, getEpics, epicSelectOptions, csSelectHTML,
-    getSprintState, normalizeEpic, formatPoints, render, renderCard,
+    getSprintState, normalizeEpic, formatPoints, render, renderCard, linkify,
     setTasks: (x) => { tasks = x; }, setSearch: (q) => { searchQuery = q; },
     setActiveFilter: (f) => { activeFilter = f; }, setDensity, getDensity: () => density,
     setStatusFilter: (s) => { statusFilter = s; },
@@ -89,6 +89,21 @@ test('modals expose accessible dialog semantics', () => {
     assert.match(tag, /aria-modal="true"/);
     assert.match(tag, /aria-labelledby="/);
   }
+});
+
+test('linkify turns URLs into safe external links and escapes the rest', () => {
+  const app = buildApp();
+  const out = app.linkify('see https://mckinsey.coupahost.com/req?a=1&b=2 done.');
+  // URL becomes a clickable, external, isolated link…
+  assert.match(out, /<a href="https:\/\/mckinsey\.coupahost\.com\/req\?a=1&amp;b=2"/);
+  assert.match(out, /target="_blank"/);
+  assert.match(out, /rel="noopener noreferrer"/);
+  assert.match(out, /event\.stopPropagation\(\)/);
+  // …trailing punctuation stays outside the link…
+  assert.ok(out.endsWith(' done.'), 'trailing period must not be part of the URL');
+  // …and non-URL content (incl. HTML) is escaped, never executed.
+  assert.equal(app.linkify('<script>alert(1)</script>'), '&lt;script&gt;alert(1)&lt;/script&gt;');
+  assert.equal(app.linkify(''), '');
 });
 
 test('keyboard-shortcut help overlay exists and is wired to "?"', () => {
