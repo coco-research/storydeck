@@ -33,6 +33,7 @@ import {
 import { runAssistant, AIError } from './ai/agent.js';
 import { health as aiHealth } from './ai/providers.js';
 import { saveConfig as saveAiKey, applyConfigToEnv } from './ai/keystore.js';
+import { versionInfo } from './version.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -111,6 +112,11 @@ async function handleApi(db, req, res, path, url) {
       coreEpics: BOARD_CORE_EPICS,
       stories: listStories(db),
     });
+  }
+
+  // GET /api/version → app + content version (so the UI can show what's running)
+  if (path === '/api/version' && method === 'GET') {
+    return sendJSON(res, 200, versionInfo());
   }
 
   // GET /api/ai/health → active AI provider/model (key-safe; never leaks keys)
@@ -299,7 +305,9 @@ if (isMain) {
   backup(db);
   server.listen(PORT, HOST, () => {
     const url = `http://${HOST}:${PORT}`;
-    console.log(`\n  ${BOARD_TITLE} — running locally (on-device only)`);
+    const v = versionInfo();
+    console.log(`\n  ${BOARD_TITLE} v${v.appVersion} — running locally (on-device only)`);
+    console.log(`  content v${v.contentVersion}${v.commit ? ` (${v.commit})` : ''} · ${v.source}`);
     console.log(`  ${url}`);
     console.log(`  DB: ${DEFAULT_DB_PATH}\n`);
   });

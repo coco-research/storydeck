@@ -4,6 +4,7 @@
 // native window. Fully on-device: the server only binds 127.0.0.1.
 
 import { join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname } from 'node:path';
 import { app, BrowserWindow, dialog, shell } from 'electron';
@@ -69,13 +70,24 @@ function listenWithFallback(server, preferred, host) {
 // bad overlay can never stop the app from starting.
 async function selectContentSource() {
   userDataDir = app.getPath('userData');
+  // The binary's version never changes via hot update, so always expose the
+  // BUNDLED package.json version (an overlay's package.json is just an ESM stub).
+  try {
+    const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'));
+    process.env.STORYDECK_APP_VERSION = pkg.version || '0.0.0';
+  } catch { /* fall back to version.js defaults */ }
+
   bundledContentVersion = readManifest(join(__dirname, 'content-manifest.json'))?.contentVersion ?? 0;
+  process.env.STORYDECK_CONTENT_SOURCE = 'bundled';
   const source = chooseContentSource({
     bundledDir: __dirname,
     userDataDir,
     bundledVersion: bundledContentVersion,
   });
-  if (!source.fromOverlay) return;
+  if (!source.fromOverlay) {
+    console.log(`running content v${bundledContentVersion} (bundled) · app v${process.env.STORYDECK_APP_VERSION}`);
+    return;
+  }
   try {
     const s = await import(pathToFileURL(join(source.dir, 'src', 'server.js')).href);
     const d = await import(pathToFileURL(join(source.dir, 'src', 'db.js')).href);
@@ -83,12 +95,14 @@ async function selectContentSource() {
     createApp = s.createApp; HOST = s.HOST; PORT = s.PORT;
     backup = d.backup; applyConfigToEnv = k.applyConfigToEnv;
     process.env.WEB_OVERLAY_DIR = join(source.dir, 'web');
-    console.log(`content overlay active: v${source.version}`);
+    process.env.STORYDECK_CONTENT_SOURCE = 'overlay';
+    console.log(`content overlay active: v${source.version} (updated from bundled v${bundledContentVersion}) · app v${process.env.STORYDECK_APP_VERSION}`);
   } catch (err) {
     console.error('content overlay failed to load, using bundled:', err.message);
     createApp = bundledServer.createApp; HOST = bundledServer.HOST; PORT = bundledServer.PORT;
     backup = bundledDb.backup; applyConfigToEnv = bundledKeystore.applyConfigToEnv;
     delete process.env.WEB_OVERLAY_DIR;
+    process.env.STORYDECK_CONTENT_SOURCE = 'bundled';
   }
 }
 
@@ -110,7 +124,10 @@ function scheduleUpdateCheck() {
   setTimeout(() => {
     downloadUpdate({ userDataDir, currentVersion: bundledContentVersion })
       .then((r) => {
-        if (r.updated) console.log(`content update staged: v${r.version} (applies on next launch)`);
+        if (r.updated) {
+          const tag = [r.appVersion ? `app v${r.appVersion}` : null, r.commit].filter(Boolean).join(' ');
+          console.log(`content update staged: content v${r.version}${tag ? ` (${tag})` : ''} — applies on next launch`);
+        }
       })
       .catch(() => { /* best-effort; never disrupt the session */ });
   }, 3000);

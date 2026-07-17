@@ -186,13 +186,28 @@ export async function downloadUpdate({
     // and every `import` in it throws. Stamp the tree as an ES module so the
     // dynamic import in main.js resolves correctly.
     writeFileSync(join(nextDir, 'package.json'), JSON.stringify({ type: 'module', private: true }) + '\n');
+    // Ship the manifest inside the overlay so the running app (which reads
+    // content-manifest.json from its own root) reports the ACTIVE version.
+    writeFileSync(join(nextDir, MANIFEST_NAME), manifestBuf);
 
     // Atomic-ish swap: move the freshly built tree into place.
     const oDir = overlayDir(userDataDir);
     rmSync(oDir, { recursive: true, force: true });
     renameSync(nextDir, oDir);
-    writeOverlayMeta(userDataDir, { version: manifest.contentVersion, failcount: 0, appliedAt: new Date().toISOString() });
-    return { updated: true, version: manifest.contentVersion };
+    writeOverlayMeta(userDataDir, {
+      version: manifest.contentVersion,
+      appVersion: manifest.appVersion || null,
+      commit: manifest.commit || null,
+      failcount: 0,
+      appliedAt: new Date().toISOString(),
+    });
+    return {
+      updated: true,
+      version: manifest.contentVersion,
+      appVersion: manifest.appVersion || null,
+      commit: manifest.commit || null,
+      generatedAt: manifest.generatedAt || null,
+    };
   } catch (err) {
     try { rmSync(overlayNextDir(userDataDir), { recursive: true, force: true }); } catch { /* ignore */ }
     return { updated: false, reason: 'error', error: err.message };

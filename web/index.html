@@ -842,9 +842,14 @@
   .statusbar .hints span kbd { color: var(--warning); font-family: var(--font-sans); font-size: 12px; }
   .statusbar .status-right { margin-left: auto; color: var(--faint-text); font-variant-numeric: tabular-nums; }
   .statusbar .status-right b { color: var(--text); font-weight: 500; }
+  .statusbar .ver-badge { margin-left: 10px; background: transparent; border: 1px solid var(--border); color: var(--faint-text); font: inherit; font-size: 11px; padding: 1px 8px; border-radius: 2px; cursor: pointer; letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+  .statusbar .ver-badge:hover { color: var(--text); border-color: var(--muted); }
+  .statusbar .ver-badge .up { color: var(--success); margin-left: 5px; font-weight: 700; }
   .legend { font-size: 11px; color: var(--faint-text); padding: 0 2px; }
   .legend b { color: var(--muted); font-weight: 500; }
   @media (max-width: 700px) { .statusbar .hints { display: none; } }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--surface-strong); border: 1px solid var(--border); color: var(--text); padding: 10px 15px; border-radius: 3px; font-size: 13px; line-height: 1.5; box-shadow: 0 6px 24px rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .18s ease, transform .18s ease; z-index: 9999; max-width: 90vw; white-space: pre-line; font-variant-numeric: tabular-nums; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
@@ -931,9 +936,12 @@
       <span><kbd>/</kbd> search</span><span><kbd>a</kbd> ask ai</span><span><kbd>n</kbd> new</span><span><kbd>v</kbd> view</span><span><kbd>b</kbd> boot</span><span><kbd>?</kbd> help</span>
     </div>
     <span class="status-right" id="status-right"></span>
+    <button type="button" class="ver-badge" id="app-version" onclick="showVersionInfo()" title="Version" hidden></button>
   </div>
   <p class="legend"><b>tags</b> [TODO] [WIP] [BLKD] [DONE] &nbsp;·&nbsp; <b>!!</b> urgent &nbsp;·&nbsp; click <b>#dot</b> to toggle done &nbsp;·&nbsp; drag cards to reorder</p>
 </div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- Add / edit story modal -->
 <div class="modal-overlay" id="modal">
@@ -1041,6 +1049,43 @@ async function api(path, opts = {}) {
     throw new Error(err.error || `Request failed (${res.status})`);
   }
   return res.status === 204 ? null : res.json();
+}
+
+// ── version badge ───────────────────────────────────────────────────────────
+let versionData = null;
+
+function versionLines() {
+  if (!versionData) return 'Version unavailable';
+  const d = versionData;
+  const published = d.contentDate ? new Date(d.contentDate).toLocaleString() : '—';
+  return [
+    `StoryDeck v${d.appVersion} · ${d.channel}`,
+    `content v${d.contentVersion}${d.commit ? ' · ' + d.commit : ''}`,
+    `source: ${d.source === 'overlay' ? 'hot-updated (from GitHub)' : 'bundled with app'}`,
+    `published: ${published}`,
+  ].join('\n');
+}
+
+function showToast(msg, ms = 4000) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+function showVersionInfo() { showToast(versionLines(), 6000); }
+
+async function initVersion() {
+  try { versionData = await api('/api/version'); }
+  catch { return; }
+  const el = document.getElementById('app-version');
+  if (!el || !versionData) return;
+  const updated = versionData.source === 'overlay';
+  el.innerHTML = `v${escHTML(versionData.appVersion)}${updated ? '<span class="up" title="running a hot update">&#9679;</span>' : ''}`;
+  el.title = versionLines().replace(/\n/g, ' · ');
+  el.hidden = false;
 }
 
 function showConnError(msg) {
@@ -2408,6 +2453,7 @@ initSearch();
 initAI();
 refreshAiStatusBadge();
 loadState();
+initVersion();
 </script>
 </body>
 </html>

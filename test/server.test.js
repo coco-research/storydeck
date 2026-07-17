@@ -39,6 +39,17 @@ test('GET /api/state returns the seeded board', async () => {
   assert.equal(data.stories.length, 14);
 });
 
+test('GET /api/version reports app + content version and source', async () => {
+  const res = await fetch(`${base}/api/version`);
+  assert.equal(res.status, 200);
+  const v = await res.json();
+  assert.equal(typeof v.appVersion, 'string');
+  assert.ok(v.appVersion.length > 0);
+  assert.equal(typeof v.contentVersion, 'number');
+  assert.ok(['bundled', 'overlay'].includes(v.source));
+  assert.ok('commit' in v && 'channel' in v && 'contentDate' in v);
+});
+
 test('static serving prefers WEB_OVERLAY_DIR, then falls back to bundled (hot updates)', async () => {
   const overlay = mkdtempSync(join(tmpdir(), 'sd-web-overlay-'));
   try {

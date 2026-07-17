@@ -102,7 +102,10 @@ test('downloadUpdate applies a newer, SHA-verified overlay atomically', async ()
     'src/server.js': '// v99 server',
   };
   const manifest = {
+    appVersion: '1.2.3',
     contentVersion: 99,
+    commit: 'abc1234',
+    generatedAt: '2026-07-17T00:00:00.000Z',
     files: Object.fromEntries(Object.entries(remote).map(([k, v]) => [k, sha256(Buffer.from(v))])),
   };
   const fetchImpl = async (url) => {
@@ -113,6 +116,8 @@ test('downloadUpdate applies a newer, SHA-verified overlay atomically', async ()
   const r = await downloadUpdate({ userDataDir: dir, currentVersion: 1, fetchImpl });
   assert.equal(r.updated, true);
   assert.equal(r.version, 99);
+  assert.equal(r.appVersion, '1.2.3');
+  assert.equal(r.commit, 'abc1234');
   assert.equal(readFileSync(join(dir, 'content-overlay', 'web', 'index.html'), 'utf8'), '<!-- v99 -->');
   assert.equal(readOverlayMeta(dir).version, 99);
   assert.equal(readOverlayMeta(dir).failcount, 0);
@@ -120,6 +125,10 @@ test('downloadUpdate applies a newer, SHA-verified overlay atomically', async ()
   // dynamic import in main.js throws "Cannot use import statement outside a module".
   const pkg = JSON.parse(readFileSync(join(dir, 'content-overlay', 'package.json'), 'utf8'));
   assert.equal(pkg.type, 'module');
+  // Overlay ships the manifest so the running app reports the ACTIVE version.
+  const overlayManifest = JSON.parse(readFileSync(join(dir, 'content-overlay', 'content-manifest.json'), 'utf8'));
+  assert.equal(overlayManifest.contentVersion, 99);
+  assert.equal(overlayManifest.appVersion, '1.2.3');
 });
 
 test('downloadUpdate is a no-op when already up to date', async () => {
