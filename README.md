@@ -79,6 +79,32 @@ saves automatically to your OS user-data folder. No setup, no server to start.
 (Maintainers: push a `v*` tag to trigger the release build — see
 `.github/workflows/release.yml`.)
 
+## Download & run (macOS)
+
+Grab the `.dmg` from the
+[Releases page](https://github.com/coco-research/storydeck/releases). Currently
+**Apple Silicon (arm64) only** — signing, notarization, and Windows/Linux builds
+are planned.
+
+1. Open the `.dmg`, drag **StoryDeck** to **Applications**, and launch it.
+   The app runs its own local server on `127.0.0.1` (loopback only) — fully
+   on-device.
+
+**First launch (unsigned build)** — macOS Gatekeeper will warn because the app is
+not yet notarized. One-time fix: in **Applications**, right-click (or
+Control-click) **StoryDeck** → **Open** → **Open**. Alternatively:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/StoryDeck.app"
+```
+
+On first run the SQLite database is created automatically at
+`~/Library/Application Support/StoryDeck/todo.db`, seeded with a sample board.
+State persists across launches with no setup.
+
+**Backup / move data:** use the in-app **Export** button (or copy `todo.db`).
+Restore via the in-app import.
+
 ## Building installers
 
 ```bash
