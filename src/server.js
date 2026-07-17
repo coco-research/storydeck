@@ -246,15 +246,21 @@ async function serveStatic(res, path) {
   let rel = path === '/' ? '/index.html' : path;
   // Prevent path traversal.
   const safe = normalize(rel).replace(/^(\.\.[/\\])+/, '');
-  const file = join(WEB_DIR, safe);
-  if (!file.startsWith(WEB_DIR) || !existsSync(file)) {
-    res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('Not found');
-    return;
+  // Prefer a writable content overlay (hot updates) when present, then fall back
+  // to the bundled assets. Each candidate is confined to its own root.
+  const overlay = (process.env.WEB_OVERLAY_DIR || '').trim();
+  const roots = overlay ? [overlay, WEB_DIR] : [WEB_DIR];
+  for (const root of roots) {
+    const file = join(root, safe);
+    if (file.startsWith(root) && existsSync(file)) {
+      const data = await readFile(file);
+      res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream' });
+      res.end(data);
+      return;
+    }
   }
-  const data = await readFile(file);
-  res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream' });
-  res.end(data);
+  res.writeHead(404, { 'Content-Type': 'text/plain' });
+  res.end('Not found');
 }
 
 function readBody(req) {

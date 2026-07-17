@@ -20,6 +20,10 @@ MSG="${1:-Update StoryDeck}"
 REPO="coco-research/storydeck"
 IDENT=(-c user.name="StoryDeck Dev" -c user.email="dev@storydeck.local")
 
+# Regenerate the hot-update manifest so pushed content stays verifiable/updatable
+# (no-op when nothing changed; see tools/make-manifest.cjs).
+node tools/make-manifest.cjs || true
+
 git add -A
 
 # ── Guard: no private data may be tracked ────────────────────────────────────

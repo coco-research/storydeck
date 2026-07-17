@@ -4,19 +4,31 @@
 // native window. Fully on-device: the server only binds 127.0.0.1.
 
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname } from 'node:path';
 import { app, BrowserWindow, dialog, shell } from 'electron';
-import { createApp, HOST, PORT } from './src/server.js';
-import { backup } from './src/db.js';
-import { applyConfigToEnv } from './src/ai/keystore.js';
+import * as bundledServer from './src/server.js';
+import * as bundledDb from './src/db.js';
+import * as bundledKeystore from './src/ai/keystore.js';
+import { chooseContentSource, markBootOk, downloadUpdate, readManifest } from './src/updater.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// These default to the BUNDLED content; ensureServer() may swap them for a newer
+// content overlay downloaded from GitHub (see src/updater.js). Keeping them
+// mutable lets a hot update change the frontend/server without a reinstall.
+let createApp = bundledServer.createApp;
+let HOST = bundledServer.HOST;
+let PORT = bundledServer.PORT;
+let backup = bundledDb.backup;
+let applyConfigToEnv = bundledKeystore.applyConfigToEnv;
 
 let mainWindow = null;
 let httpServer = null;
 let serverReady = false;
 let activePort = PORT; // the port the server actually bound (may differ from PORT)
+let userDataDir = null; // resolved at startup; used for overlay meta + updates
+let bundledContentVersion = 0;
 
 // Choose a writable DB location. The packaged app bundle (app.asar) is READ-ONLY,
 // so we must never let the DB resolve to a path inside it. `db.js` freezes its
@@ -52,8 +64,37 @@ function listenWithFallback(server, preferred, host) {
   });
 }
 
+// Load web/ + src/ from a downloaded overlay when one is newer than the bundle;
+// otherwise keep the bundled defaults. Any failure falls back to bundled so a
+// bad overlay can never stop the app from starting.
+async function selectContentSource() {
+  userDataDir = app.getPath('userData');
+  bundledContentVersion = readManifest(join(__dirname, 'content-manifest.json'))?.contentVersion ?? 0;
+  const source = chooseContentSource({
+    bundledDir: __dirname,
+    userDataDir,
+    bundledVersion: bundledContentVersion,
+  });
+  if (!source.fromOverlay) return;
+  try {
+    const s = await import(pathToFileURL(join(source.dir, 'src', 'server.js')).href);
+    const d = await import(pathToFileURL(join(source.dir, 'src', 'db.js')).href);
+    const k = await import(pathToFileURL(join(source.dir, 'src', 'ai', 'keystore.js')).href);
+    createApp = s.createApp; HOST = s.HOST; PORT = s.PORT;
+    backup = d.backup; applyConfigToEnv = k.applyConfigToEnv;
+    process.env.WEB_OVERLAY_DIR = join(source.dir, 'web');
+    console.log(`content overlay active: v${source.version}`);
+  } catch (err) {
+    console.error('content overlay failed to load, using bundled:', err.message);
+    createApp = bundledServer.createApp; HOST = bundledServer.HOST; PORT = bundledServer.PORT;
+    backup = bundledDb.backup; applyConfigToEnv = bundledKeystore.applyConfigToEnv;
+    delete process.env.WEB_OVERLAY_DIR;
+  }
+}
+
 async function ensureServer() {
   if (serverReady) return;
+  await selectContentSource();
   applyConfigToEnv(); // load a first-run stored API key (from userData) if present
   const dbPath = resolveDbPath();
   const { server, db } = createApp(dbPath);
@@ -61,6 +102,18 @@ async function ensureServer() {
   try { backup(db); } catch (e) { /* backups are best-effort */ }
   activePort = await listenWithFallback(server, PORT, HOST);
   serverReady = true;
+}
+
+// Non-blocking: pull any newer content from GitHub for the NEXT launch.
+function scheduleUpdateCheck() {
+  if (process.env.STORYDECK_NO_UPDATE === '1' || !userDataDir) return;
+  setTimeout(() => {
+    downloadUpdate({ userDataDir, currentVersion: bundledContentVersion })
+      .then((r) => {
+        if (r.updated) console.log(`content update staged: v${r.version} (applies on next launch)`);
+      })
+      .catch(() => { /* best-effort; never disrupt the session */ });
+  }, 3000);
 }
 
 function createWindow() {
@@ -123,6 +176,10 @@ app.whenReady().then(async () => {
   }
 
   createWindow();
+  // We booted successfully → clear any overlay boot-failure counter (rollback
+  // only trips after repeated failed boots), then check for the next update.
+  try { markBootOk(userDataDir); } catch (e) { /* best-effort */ }
+  scheduleUpdateCheck();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

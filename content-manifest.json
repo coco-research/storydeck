@@ -1,0 +1,17 @@
+{
+  "contentVersion": 1784314547,
+  "generatedAt": "2026-07-17T18:55:47.894Z",
+  "repo": "coco-research/storydeck",
+  "files": {
+    "web/index.html": "77c7fcb3de3287acd79c94a2bf04ef56fc4438e2c2ea386f1505794fba31e455",
+    "src/ai/agent.js": "d094c955609f4cb711db22a7e0056ac1cf5bb8b1d7dc1c091aa8630f973c263a",
+    "src/ai/errors.js": "89347834aae1b5fa3aab29aea93a163aa77ecba3ef5fb7a92909ae9445441fd8",
+    "src/ai/keystore.js": "b3373782040edf4b406209a805fb8fab74fe4f35a127e52bfd3f901caf59f754",
+    "src/ai/providers.js": "38892f256232bcc44d638e351b4d3d369d15e2afff0b4ed825c37a5ff77817fd",
+    "src/ai/tools.js": "35a49fdd36fdb0ddadd76fc32894f5090a63ca5947e8ad7233cb2f81e6e85d8d",
+    "src/db.js": "2d65697c6477ac36a6d6638d9f206011eb33426406d4d2a5a51c0dfdabc801f3",
+    "src/env.js": "8632c8727c8d40e0d69992bd58a3f5a5e037accf93226178cd0a0c676d207fa5",
+    "src/server.js": "94b23a5e0f0ed4788c7c962484a33fbdd0c7a27a84e311cb2675d1a2f6b9a67e",
+    "src/updater.js": "7d476f4e1b631107022f4111eddd4e3e425d7e341daa2f681bba4b08d1645f5b"
+  }
+}

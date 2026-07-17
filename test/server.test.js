@@ -1,5 +1,8 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createApp, isLoopback } from '../src/server.js';
 import { setModelRunner } from '../src/ai/agent.js';
 import { SAMPLE_SEED_PATH } from '../src/db.js';
@@ -34,6 +37,31 @@ test('GET /api/state returns the seeded board', async () => {
   assert.equal(res.status, 200);
   const data = await res.json();
   assert.equal(data.stories.length, 14);
+});
+
+test('static serving prefers WEB_OVERLAY_DIR, then falls back to bundled (hot updates)', async () => {
+  const overlay = mkdtempSync(join(tmpdir(), 'sd-web-overlay-'));
+  try {
+    // 1) File present in the overlay wins over the bundled asset.
+    writeFileSync(join(overlay, 'index.html'), 'OVERLAY_INDEX_MARKER');
+    process.env.WEB_OVERLAY_DIR = overlay;
+    let res = await fetch(`${base}/`);
+    assert.equal(res.status, 200);
+    assert.match(await res.text(), /OVERLAY_INDEX_MARKER/);
+
+    // 2) When the overlay lacks the file, the bundled asset is served.
+    const empty = mkdtempSync(join(tmpdir(), 'sd-web-empty-'));
+    process.env.WEB_OVERLAY_DIR = empty;
+    res = await fetch(`${base}/`);
+    assert.equal(res.status, 200);
+    const bundled = await res.text();
+    assert.ok(!/OVERLAY_INDEX_MARKER/.test(bundled), 'should fall back to bundled index.html');
+    assert.match(bundled, /<!doctype html>/i);
+    rmSync(empty, { recursive: true, force: true });
+  } finally {
+    delete process.env.WEB_OVERLAY_DIR;
+    rmSync(overlay, { recursive: true, force: true });
+  }
 });
 
 test('GET /api/state exposes configurable branding fields', async () => {
