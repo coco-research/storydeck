@@ -28,8 +28,11 @@ run_node_mode() {
 
   db_path="$tmp/todo.db"
   export DB_PATH="$db_path"
+  # Pin the PUBLIC sample seed so this verifies packaged parity (the shipped app
+  # only carries data/seed.sample.json), not any local private/ overlay.
+  export SEED_PATH="${SEED_PATH:-data/seed.sample.json}"
 
-  echo "==> node mode: create + seed DB at $db_path"
+  echo "==> node mode: create + seed DB at $db_path (seed=$SEED_PATH)"
 
   if ! out1=$(node --input-type=module -e "
 import { openDatabase, seedIfEmpty, listStories } from './src/db.js';
@@ -37,7 +40,7 @@ import { existsSync } from 'node:fs';
 
 const dbPath = process.env.DB_PATH;
 const db = openDatabase(dbPath);
-seedIfEmpty(db);
+seedIfEmpty(db, process.env.SEED_PATH);
 const stories = listStories(db);
 const n = stories.length;
 if (!existsSync(dbPath)) {
@@ -134,6 +137,69 @@ run_electron_mode() {
   pass "DB file exists at $db_path"
 }
 
+run_dmg_mode() {
+  # Ultimate smoke test: mount the SHIPPED .dmg exactly as a user would, then run
+  # the packaged app's BOARD_SELFTEST hook from the mounted volume against a fresh
+  # temp DB. Proves the artifact boots, creates the DB, and seeds the sample.
+  local dmg tmp db_path mount_dir app bin output
+  local attach_out=""
+  local mounted=""
+
+  dmg="${DMG_PATH:-$(find dist -maxdepth 1 -name '*.dmg' -type f 2>/dev/null | head -n 1)}"
+  if [ -z "$dmg" ] || [ ! -f "$dmg" ]; then
+    fail "no .dmg found in dist/ (build it first: ./tools/build-dmg.sh)"
+    return
+  fi
+  echo "==> dmg mode: mounting $dmg"
+
+  tmp="$(mktemp -d)"
+  mount_dir="$tmp/mnt"
+  mkdir -p "$mount_dir"
+  db_path="$tmp/todo.db"
+  # Cleanup: always detach the volume and remove the temp dir.
+  trap '[ -n "$mounted" ] && hdiutil detach "$mounted" -quiet 2>/dev/null || true; rm -rf "$tmp"' RETURN
+
+  if ! attach_out=$(hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mount_dir" 2>&1); then
+    echo "$attach_out" >&2
+    fail "hdiutil attach failed"
+    return
+  fi
+  mounted="$mount_dir"
+
+  app="$(find "$mount_dir" -maxdepth 1 -name '*.app' -type d | head -n 1)"
+  if [ -z "$app" ]; then
+    fail "no .app found on the mounted volume"
+    return
+  fi
+  pass "mounted volume contains $(basename "$app")"
+
+  bin="$app/Contents/MacOS/$(basename "$app" .app)"
+  if [ ! -x "$bin" ]; then
+    fail "app binary not executable at $bin"
+    return
+  fi
+
+  echo "==> dmg mode: running packaged self-test (seed=data/seed.sample.json)"
+  if ! output=$(BOARD_SELFTEST=1 DB_PATH="$db_path" SEED_PATH="data/seed.sample.json" "$bin" 2>&1); then
+    echo "$output" >&2
+    fail "packaged self-test exited non-zero"
+    return
+  fi
+
+  echo "$output" | grep -E 'SELFTEST_(OK|FAIL)' || true
+  if ! echo "$output" | grep -q 'SELFTEST_OK'; then
+    fail "packaged app did not report SELFTEST_OK"
+    return
+  fi
+  pass "packaged app booted and reported SELFTEST_OK"
+
+  if [ ! -f "$db_path" ]; then
+    fail "DB file not created at $db_path by the packaged app"
+    return
+  fi
+  pass "packaged app created the on-device DB"
+}
+
 case "$MODE" in
   node)
     run_node_mode
@@ -141,10 +207,14 @@ case "$MODE" in
   electron)
     run_electron_mode
     ;;
+  dmg)
+    run_dmg_mode
+    ;;
   *)
-    echo "Usage: $0 [node|electron]" >&2
+    echo "Usage: $0 [node|electron|dmg]" >&2
     echo "  node      (default) verify DB create/seed/persist via node — CI-safe" >&2
-    echo "  electron  verify via BOARD_SELFTEST=1 electron hook" >&2
+    echo "  electron  verify via BOARD_SELFTEST=1 electron hook (dev, unpackaged)" >&2
+    echo "  dmg       mount the shipped dist/*.dmg and self-test the packaged app" >&2
     exit 2
     ;;
 esac
