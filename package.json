@@ -13,7 +13,8 @@
     "app": "electron .",
     "test": "node --test",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "dist:mac": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg --arm64"
   },
   "devDependencies": {
     "electron": "^43.1.1",
@@ -47,7 +48,8 @@
         "zip"
       ],
       "icon": "build/icon.png",
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "identity": null
     },
     "win": {
       "target": [
