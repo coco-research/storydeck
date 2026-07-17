@@ -1,12 +1,12 @@
 {
   "appVersion": "1.1.0",
-  "contentVersion": 1784316295,
+  "contentVersion": 1784318348,
   "channel": "stable",
-  "commit": "4fbeaa3",
-  "generatedAt": "2026-07-17T19:25:31.215Z",
+  "commit": "95c2724",
+  "generatedAt": "2026-07-17T19:59:08.293Z",
   "repo": "coco-research/storydeck-content",
   "files": {
-    "web/index.html": "efa36de508f70dea1123a820a70e2965dbd3c7b3744ea21d139916dd261b7afc",
+    "web/index.html": "210bb77c0bef04bd3a25259499f3ee0ebc550d7c330e5f1db6c1e40d3c17d141",
     "src/ai/agent.js": "d094c955609f4cb711db22a7e0056ac1cf5bb8b1d7dc1c091aa8630f973c263a",
     "src/ai/errors.js": "89347834aae1b5fa3aab29aea93a163aa77ecba3ef5fb7a92909ae9445441fd8",
     "src/ai/keystore.js": "b3373782040edf4b406209a805fb8fab74fe4f35a127e52bfd3f901caf59f754",

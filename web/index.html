@@ -609,6 +609,9 @@
   /* compact single-line header (matches retro-preview.html topbar) */
   .brand-line { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; min-width: 0; }
   h1 { color: var(--accent); text-transform: uppercase; letter-spacing: .04em; font-size: 26px; line-height: 1; white-space: nowrap; }
+  .title-version { font-family: var(--font-sans); font-size: 12px; color: var(--faint-text); border: 1px solid var(--border); padding: 1px 8px; border-radius: 3px; cursor: pointer; letter-spacing: .04em; font-variant-numeric: tabular-nums; white-space: nowrap; align-self: center; }
+  .title-version:hover { color: var(--text); border-color: var(--muted); }
+  .title-version .up { color: var(--success); margin-left: 4px; font-weight: 700; }
   .meta { font-family: var(--font-sans); font-size: 12.5px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .meta::before { content: var(--shell-prompt, "storydeck@board:~$ "); color: var(--success); }
   .term-caret { display: inline-block; width: .55ch; height: 1.05em; background: var(--accent); vertical-align: -.15em; margin-left: 5px; animation: bootblink 1.06s steps(1) infinite; }
@@ -867,6 +870,7 @@
   <header>
     <div class="brand-line">
       <h1 id="board-title">StoryDeck</h1>
+      <span class="title-version" id="title-version" onclick="showVersionInfo()" title="Version — click for details" hidden></span>
       <span class="meta"><span id="meta-line">Loading…</span><span class="term-caret" aria-hidden="true"></span></span>
     </div>
     <div class="header-actions">
@@ -1080,12 +1084,17 @@ function showVersionInfo() { showToast(versionLines(), 6000); }
 async function initVersion() {
   try { versionData = await api('/api/version'); }
   catch { return; }
-  const el = document.getElementById('app-version');
-  if (!el || !versionData) return;
+  if (!versionData) return;
   const updated = versionData.source === 'overlay';
-  el.innerHTML = `v${escHTML(versionData.appVersion)}${updated ? '<span class="up" title="running a hot update">&#9679;</span>' : ''}`;
-  el.title = versionLines().replace(/\n/g, ' · ');
-  el.hidden = false;
+  const label = `v${escHTML(versionData.appVersion)}${updated ? '<span class="up" title="running a hot update">&#9679;</span>' : ''}`;
+  const tip = versionLines().replace(/\n/g, ' · ');
+  for (const id of ['app-version', 'title-version']) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.innerHTML = label;
+    el.title = tip;
+    el.hidden = false;
+  }
 }
 
 function showConnError(msg) {
