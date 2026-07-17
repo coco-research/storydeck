@@ -56,6 +56,11 @@ git -c user.name="StoryDeck Dev" -c user.email="dev@storydeck.local" add -A
 git -c user.name="StoryDeck Dev" -c user.email="dev@storydeck.local" commit -q -m "Publish StoryDeck content v${VER}"
 
 URL="https://x-access-token:${TOKEN}@github.com/${MIRROR_REPO}.git"
+# This is an INTENTIONAL public push (the machine's git-guard blocks public
+# pushes by default). Use the guard's sanctioned + audited bypass rather than the
+# unaudited --no-verify: the content is public-safe (web/ + src/ only, no secrets;
+# see the leak guard above) and exists specifically to serve desktop hot-updates.
+export GIT_GUARD_REASON="StoryDeck public content mirror for desktop hot-updates (web/src only, no secrets), owner-approved"
 # Content mirror keeps no history — force-push a single fresh commit each time.
 git -c credential.helper= push -f "$URL" HEAD:main 2>&1 | sed -E "s#https://[^@]*@#https://#g"
 
