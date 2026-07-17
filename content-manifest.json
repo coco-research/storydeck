@@ -1,7 +1,7 @@
 {
-  "contentVersion": 1784314547,
-  "generatedAt": "2026-07-17T18:55:47.894Z",
-  "repo": "coco-research/storydeck",
+  "contentVersion": 1784315051,
+  "generatedAt": "2026-07-17T19:04:11.179Z",
+  "repo": "coco-research/storydeck-content",
   "files": {
     "web/index.html": "77c7fcb3de3287acd79c94a2bf04ef56fc4438e2c2ea386f1505794fba31e455",
     "src/ai/agent.js": "d094c955609f4cb711db22a7e0056ac1cf5bb8b1d7dc1c091aa8630f973c263a",
@@ -12,6 +12,6 @@
     "src/db.js": "2d65697c6477ac36a6d6638d9f206011eb33426406d4d2a5a51c0dfdabc801f3",
     "src/env.js": "8632c8727c8d40e0d69992bd58a3f5a5e037accf93226178cd0a0c676d207fa5",
     "src/server.js": "94b23a5e0f0ed4788c7c962484a33fbdd0c7a27a84e311cb2675d1a2f6b9a67e",
-    "src/updater.js": "7d476f4e1b631107022f4111eddd4e3e425d7e341daa2f681bba4b08d1645f5b"
+    "src/updater.js": "b9d854b844bef955e79007ccc41e9e0973b7e33ea87acec2e6cca3102a70236f"
   }
 }

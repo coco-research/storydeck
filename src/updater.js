@@ -23,7 +23,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, renameSync 
 import { dirname, join, normalize, sep } from 'node:path';
 import https from 'node:https';
 
-export const CONTENT_REPO = (process.env.STORYDECK_UPDATE_REPO || 'coco-research/storydeck').trim();
+// Public content mirror (the source repo is private, so raw.githubusercontent
+// can't serve it unauthenticated). Only web/ + src/ + the manifest live here.
+export const CONTENT_REPO = (process.env.STORYDECK_UPDATE_REPO || 'coco-research/storydeck-content').trim();
 export const CONTENT_BRANCH = (process.env.STORYDECK_UPDATE_BRANCH || 'main').trim();
 export const MANIFEST_NAME = 'content-manifest.json';
 const MAX_BOOT_FAILURES = 2;       // after this many bad boots, roll back to bundled

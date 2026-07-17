@@ -47,7 +47,7 @@ const contentVersion = Number(process.env.CONTENT_VERSION)
 const manifest = {
   contentVersion,
   generatedAt: new Date().toISOString(),
-  repo: 'coco-research/storydeck',
+  repo: 'coco-research/storydeck-content',
   files,
 };
 writeFileSync(OUT, JSON.stringify(manifest, null, 2) + '\n');
