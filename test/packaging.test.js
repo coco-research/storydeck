@@ -49,3 +49,23 @@ test('main.js wires packaged data path via userData', () => {
 test('main.js exposes BOARD_SELFTEST self-test hook', () => {
   assert.match(mainJs, /BOARD_SELFTEST/);
 });
+
+// Regression guard: db.js freezes its default DB path at import time, so main.js
+// MUST pass the resolved writable path straight to createApp() — relying on
+// process.env.DB_PATH alone resolves to the read-only app.asar bundle and the
+// app fails to open ("unable to open database file").
+test('main.js passes an explicit dbPath into createApp (not asar default)', () => {
+  assert.match(mainJs, /resolveDbPath/);
+  assert.match(mainJs, /createApp\(\s*dbPath\s*\)/);
+});
+
+// Regression guard: a busy port must never make the packaged app fail to launch.
+test('main.js falls back to a free port on EADDRINUSE', () => {
+  assert.match(mainJs, /EADDRINUSE/);
+  assert.match(mainJs, /listenWithFallback/);
+});
+
+// Regression guard: a startup failure must surface (dialog), not quit silently.
+test('main.js surfaces startup failures instead of quitting silently', () => {
+  assert.match(mainJs, /showErrorBox/);
+});
