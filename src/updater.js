@@ -181,6 +181,12 @@ export async function downloadUpdate({
       writeFileSync(dest, buf);
     }
 
+    // The overlay lives under userData, where the nearest package.json does NOT
+    // declare ESM. Without this marker Node loads the overlay's .js as CommonJS
+    // and every `import` in it throws. Stamp the tree as an ES module so the
+    // dynamic import in main.js resolves correctly.
+    writeFileSync(join(nextDir, 'package.json'), JSON.stringify({ type: 'module', private: true }) + '\n');
+
     // Atomic-ish swap: move the freshly built tree into place.
     const oDir = overlayDir(userDataDir);
     rmSync(oDir, { recursive: true, force: true });

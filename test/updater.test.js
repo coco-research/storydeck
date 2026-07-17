@@ -116,6 +116,10 @@ test('downloadUpdate applies a newer, SHA-verified overlay atomically', async ()
   assert.equal(readFileSync(join(dir, 'content-overlay', 'web', 'index.html'), 'utf8'), '<!-- v99 -->');
   assert.equal(readOverlayMeta(dir).version, 99);
   assert.equal(readOverlayMeta(dir).failcount, 0);
+  // Must stamp the overlay as ESM, or Node loads the .js as CommonJS and the
+  // dynamic import in main.js throws "Cannot use import statement outside a module".
+  const pkg = JSON.parse(readFileSync(join(dir, 'content-overlay', 'package.json'), 'utf8'));
+  assert.equal(pkg.type, 'module');
 });
 
 test('downloadUpdate is a no-op when already up to date', async () => {
