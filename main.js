@@ -12,6 +12,7 @@ import * as bundledServer from './src/server.js';
 import * as bundledDb from './src/db.js';
 import * as bundledKeystore from './src/ai/keystore.js';
 import { chooseContentSource, markBootOk, downloadUpdate, readManifest } from './src/updater.js';
+import { writeRuntimeFile, removeRuntimeFile, resolveRuntimePath } from './src/runtime.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -115,6 +116,16 @@ async function ensureServer() {
   httpServer = server;
   try { backup(db); } catch (e) { /* backups are best-effort */ }
   activePort = await listenWithFallback(server, PORT, HOST);
+  try {
+    writeRuntimeFile(userDataDir, {
+      host: HOST,
+      port: activePort,
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+      appVersion: process.env.STORYDECK_APP_VERSION || '0.0.0',
+    });
+    process.env.STORYDECK_RUNTIME_FILE = resolveRuntimePath(userDataDir);
+  } catch (e) { /* runtime file is best-effort for MCP */ }
   serverReady = true;
 }
 
@@ -204,5 +215,8 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   httpServer?.close();
+  if (userDataDir) {
+    try { removeRuntimeFile(userDataDir); } catch (e) { /* best-effort */ }
+  }
   app.quit();
 });

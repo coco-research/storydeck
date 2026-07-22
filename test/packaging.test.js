@@ -69,3 +69,22 @@ test('main.js falls back to a free port on EADDRINUSE', () => {
 test('main.js surfaces startup failures instead of quitting silently', () => {
   assert.match(mainJs, /showErrorBox/);
 });
+
+test('main.js writes runtime.json for MCP port discovery', () => {
+  assert.match(mainJs, /writeRuntimeFile/);
+  assert.match(mainJs, /removeRuntimeFile/);
+  assert.match(mainJs, /STORYDECK_RUNTIME_FILE/);
+});
+
+test('package.json unpacks MCP assets from asar', () => {
+  assert.ok(Array.isArray(packageJson.build.asarUnpack));
+  assert.ok(packageJson.build.asarUnpack.some((p) => p.includes('src/mcp')));
+});
+
+test('package.json version is 1.2.x for MCP release', () => {
+  assert.match(packageJson.version, /^1\.2\./);
+});
+
+test('package.json includes MCP SDK dependency', () => {
+  assert.ok(packageJson.dependencies['@modelcontextprotocol/sdk']);
+});

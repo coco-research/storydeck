@@ -170,6 +170,38 @@ key itself.
 | `BOARD_CORE_EPICS`  | Comma-separated always-on epic filter buttons  | `Website,Mobile,…`     |
 | `DB_PATH`           | Override the SQLite file location              | `data/todo.db`         |
 
+## Connect Cursor (MCP) — v1.2+
+
+StoryDeck exposes a **local MCP server** so Cursor can read and update your live
+board while the app is running. Everything stays on loopback — no cloud sync.
+
+**Requirements:** StoryDeck **v1.2.0+** installed and running.
+
+1. **One-time setup** (after installing v1.2):
+
+   ```bash
+   ./tools/install-mcp.sh
+   ```
+
+   This merges a `storydeck` entry into `~/.cursor/mcp.json`. Restart Cursor.
+
+2. **Use it:** Open StoryDeck, then in Cursor ask to list or update your board.
+   MCP tools include `storydeck_list`, `storydeck_create`, `storydeck_complete`,
+   and more.
+
+**Dev mode** (`npm start`): the installer detects no `/Applications/StoryDeck.app`
+and points MCP at this repo with system `node`. Override the API URL with
+`STORYDECK_URL=http://127.0.0.1:4321` if needed.
+
+### Updates: reinstall vs hot-update
+
+| What changed | What you do |
+|--------------|-------------|
+| UI / server JS (`web/`, `src/`) | Quit StoryDeck and reopen — hot-update applies automatically |
+| App binary (v1.1 → v1.2, Electron shell) | Reinstall the `.dmg` or run `./tools/update-app.sh` |
+| MCP tool tweaks after v1.2 | Usually just relaunch — shipped via hot-update |
+| Your stories | Never lost — they live in OS user data, not the app bundle |
+
 ## Development
 
 ```bash

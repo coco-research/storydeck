@@ -34,6 +34,7 @@ import { runAssistant, AIError } from './ai/agent.js';
 import { health as aiHealth } from './ai/providers.js';
 import { saveConfig as saveAiKey, applyConfigToEnv } from './ai/keystore.js';
 import { versionInfo } from './version.js';
+import { writeRuntimeFile, runtimeDirFromDbPath, resolveRuntimePath } from './runtime.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -306,6 +307,19 @@ if (isMain) {
   server.listen(PORT, HOST, () => {
     const url = `http://${HOST}:${PORT}`;
     const v = versionInfo();
+    const runtimeDir = runtimeDirFromDbPath(DEFAULT_DB_PATH);
+    if (runtimeDir) {
+      try {
+        writeRuntimeFile(runtimeDir, {
+          host: HOST,
+          port: PORT,
+          pid: process.pid,
+          startedAt: new Date().toISOString(),
+          appVersion: v.appVersion,
+        });
+        process.env.STORYDECK_RUNTIME_FILE = resolveRuntimePath(runtimeDir);
+      } catch { /* best-effort for dev MCP */ }
+    }
     console.log(`\n  ${BOARD_TITLE} v${v.appVersion} — running locally (on-device only)`);
     console.log(`  content v${v.contentVersion}${v.commit ? ` (${v.commit})` : ''} · ${v.source}`);
     console.log(`  ${url}`);

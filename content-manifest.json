@@ -1,9 +1,9 @@
 {
-  "appVersion": "1.1.0",
-  "contentVersion": 1784318348,
+  "appVersion": "1.2.0",
+  "contentVersion": 1784744992,
   "channel": "stable",
-  "commit": "95c2724",
-  "generatedAt": "2026-07-17T19:59:08.293Z",
+  "commit": "4fa08a2",
+  "generatedAt": "2026-07-22T18:29:52.942Z",
   "repo": "coco-research/storydeck-content",
   "files": {
     "web/index.html": "210bb77c0bef04bd3a25259499f3ee0ebc550d7c330e5f1db6c1e40d3c17d141",
@@ -14,7 +14,11 @@
     "src/ai/tools.js": "35a49fdd36fdb0ddadd76fc32894f5090a63ca5947e8ad7233cb2f81e6e85d8d",
     "src/db.js": "2d65697c6477ac36a6d6638d9f206011eb33426406d4d2a5a51c0dfdabc801f3",
     "src/env.js": "8632c8727c8d40e0d69992bd58a3f5a5e037accf93226178cd0a0c676d207fa5",
-    "src/server.js": "3dd4dafea4588ec9e4563e2aa1cedecc121f050199badc8ebf668c6039afab97",
+    "src/mcp/client.js": "49da5689202f51fd87a58d4d76b847795621cf14e4c4e2d5e0d33848f0b65ead",
+    "src/mcp/server.js": "fb49c46247e214a815f0e06b9c61f615ca2959f8e10b16c76cd7a5c31cc70eef",
+    "src/mcp/tools.js": "1b99f1eae34cbdc87c9738f9b5e4a922300cfda410d988cefde5fbdff4ec7081",
+    "src/runtime.js": "be59c9a6062f48b85dc8f0f8f166761c62112c4576d17bc198092ac1d7a9f6f3",
+    "src/server.js": "aab11f50f000278fce133499eebcccf7aa20fdb43cf45074e714289662d82b69",
     "src/updater.js": "7b57a6b4a311e8f972967b17b539033d6ebd8c6bc77c5f36aceaa4b248e8a63a",
     "src/version.js": "b16a10e0ea90547d4009379d5060cf51d1927e752e45661117371ceb217fd5c2"
   }

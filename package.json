@@ -1,6 +1,6 @@
 {
   "name": "storydeck",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "main": "main.js",
@@ -11,6 +11,7 @@
   "scripts": {
     "start": "node src/server.js",
     "app": "electron .",
+    "mcp": "node src/mcp/server.js",
     "test": "node --test",
     "manifest": "node tools/make-manifest.cjs",
     "pack": "electron-builder --dir",
@@ -22,11 +23,17 @@
     "electron-builder": "^25.1.8"
   },
   "dependencies": {
-    "@cursor/sdk": "^1.0.23"
+    "@cursor/sdk": "^1.0.23",
+    "@modelcontextprotocol/sdk": "^1.29.0"
   },
   "build": {
     "appId": "com.storydeck.app",
     "productName": "StoryDeck",
+    "asarUnpack": [
+      "src/mcp/**",
+      "node_modules/@modelcontextprotocol/**",
+      "node_modules/zod/**"
+    ],
     "artifactName": "StoryDeck-${version}-${os}-${arch}.${ext}",
     "files": [
       "main.js",
