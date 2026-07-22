@@ -614,8 +614,6 @@
   .title-version .up { color: var(--success); margin-left: 4px; font-weight: 700; }
   .meta { font-family: var(--font-sans); font-size: 12.5px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .meta::before { content: var(--shell-prompt, "storydeck@board:~$ "); color: var(--success); }
-  .term-caret { display: inline-block; width: .55ch; height: 1.05em; background: var(--accent); vertical-align: -.15em; margin-left: 5px; animation: bootblink 1.06s steps(1) infinite; }
-  @media (prefers-reduced-motion: reduce) { .term-caret { animation: none; } }
 
   /* buttons */
   .add-btn, .secondary-btn { border-radius: 2px; font-weight: 700; letter-spacing: .03em; padding: 8px 14px; }
@@ -871,7 +869,7 @@
     <div class="brand-line">
       <h1 id="board-title">StoryDeck</h1>
       <span class="title-version" id="title-version" onclick="showVersionInfo()" title="Version — click for details" hidden></span>
-      <span class="meta"><span id="meta-line">Loading…</span><span class="term-caret" aria-hidden="true"></span></span>
+      <span class="meta"><span id="meta-line">Loading…</span></span>
     </div>
     <div class="header-actions">
       <button class="add-btn" onclick="openModal()">+ Add story</button>
