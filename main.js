@@ -125,6 +125,10 @@ async function ensureServer() {
       appVersion: process.env.STORYDECK_APP_VERSION || '0.0.0',
     });
     process.env.STORYDECK_RUNTIME_FILE = resolveRuntimePath(userDataDir);
+    process.env.STORYDECK_PACKAGED = '1';
+    process.env.STORYDECK_APP_ROOT = __dirname;
+    process.env.STORYDECK_MCP_COMMAND = process.execPath;
+    process.env.STORYDECK_MCP_SCRIPT = join(__dirname, 'src', 'mcp', 'server.js');
   } catch (e) { /* runtime file is best-effort for MCP */ }
   serverReady = true;
 }

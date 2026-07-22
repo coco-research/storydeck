@@ -425,6 +425,21 @@
   .ai-key-note { color: var(--muted); font-size: 12px; margin: 2px 0 10px; line-height: 1.45; }
   .ai-key-note b { color: var(--text); font-weight: 700; }
   .ai-key-err { color: var(--danger); font-size: 12px; margin: 8px 0 0; }
+  .mcp-intro { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0 0 14px; }
+  .mcp-status-line { font-size: 12px; color: var(--text-2); margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel-2, var(--panel)); }
+  .mcp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 12px 0 16px; }
+  .mcp-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; background: var(--panel); display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
+  .mcp-card h3 { font-size: 14px; margin: 0; font-weight: 700; }
+  .mcp-card p { font-size: 12px; color: var(--muted); margin: 0; line-height: 1.4; flex: 1; }
+  .mcp-badge { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-2); width: fit-content; }
+  .mcp-badge.connected { color: var(--success); border-color: color-mix(in srgb, var(--success) 40%, var(--border)); }
+  .mcp-badge.available { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+  .mcp-badge.not_installed { opacity: .7; }
+  .mcp-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mcp-card-actions button { font-size: 12px; padding: 6px 10px; }
+  .mcp-manual { margin-top: 8px; }
+  .mcp-manual textarea { width: 100%; min-height: 120px; font-family: var(--font-mono); font-size: 11px; margin-top: 8px; }
+  .mcp-footnote { font-size: 12px; color: var(--muted); line-height: 1.45; margin: 8px 0 0; }
   .help-keys { list-style: none; margin: 6px 0 4px; padding: 0; }
   .help-keys li { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px dashed var(--line); }
   .help-keys li:last-child { border-bottom: none; }
@@ -876,6 +891,7 @@
       <button class="add-btn secondary-btn" onclick="exportJSON()" title="Save a portable copy of the board (e.g. to move to another Mac)">Backup</button>
       <button class="add-btn secondary-btn" onclick="openImportPicker()" title="Restore the board from a backup file (replaces current stories)">Restore</button>
       <button class="add-btn secondary-btn" id="ai-key-btn" onclick="openAiKeyModal()" title="Connect your own AI key (OpenAI / Anthropic / Cursor)">AI key</button>
+      <button class="add-btn secondary-btn" id="mcp-connect-btn" onclick="openMcpModal()" title="Connect external AI agents to your board via MCP">Connect AI</button>
       <button class="add-btn secondary-btn danger-btn" onclick="startFresh()" title="Clear all stories and start an empty board (a backup is saved first)">Start fresh</button>
       <input type="file" id="import-json-input" accept="application/json,.json" style="display:none" onchange="importJSON(event)" />
     </div>
@@ -993,6 +1009,28 @@
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closeAiKeyModal()">Cancel</button>
       <button class="modal-save" id="ai-key-save-btn" onclick="saveAiKey()">Save key</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="mcp-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mcp-title" style="width:620px">
+    <h2 id="mcp-title">Connect your AI to StoryDeck</h2>
+    <p class="mcp-intro">StoryDeck is the MCP server — your board stays on this Mac. Pick your AI app below and connect in one click. This is separate from the in-app <b>AI key</b> (built-in ask bar).</p>
+    <p class="mcp-status-line" id="mcp-status-line">Checking connection…</p>
+    <div class="mcp-grid" id="mcp-grid"></div>
+    <div class="mcp-manual" id="mcp-manual-block" hidden>
+      <label for="mcp-manual-json">Manual MCP config (paste into your agent’s settings)</label>
+      <textarea id="mcp-manual-json" readonly spellcheck="false"></textarea>
+      <div class="mcp-card-actions" style="margin-top:8px">
+        <button type="button" class="modal-save" onclick="copyMcpManual()">Copy JSON</button>
+      </div>
+    </div>
+    <p class="mcp-footnote" id="mcp-footnote">After connecting, restart your AI app once. Then ask: “list my StoryDeck stories”.</p>
+    <p class="ai-key-err" id="mcp-err" hidden></p>
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel" onclick="testMcpConnection()">Test connection</button>
+      <button class="modal-cancel" onclick="closeMcpModal()">Close</button>
     </div>
   </div>
 </div>
@@ -1830,6 +1868,127 @@ async function saveAiKey() {
   }
 }
 
+// ── Universal MCP connector (external AI harnesses) ─────────────────────────
+function mcpStatusLabel(status) {
+  const map = {
+    connected: 'Connected',
+    available: 'Ready to connect',
+    not_installed: 'Not installed',
+    manual: 'Copy config',
+    unsupported_platform: 'Unsupported here',
+  };
+  return map[status] || status;
+}
+
+function renderMcpHarnesses(data) {
+  const grid = document.getElementById('mcp-grid');
+  const statusLine = document.getElementById('mcp-status-line');
+  const manualBlock = document.getElementById('mcp-manual-block');
+  if (!grid || !data) return;
+  const runtime = data.runtimeOk ? 'StoryDeck running' : 'StoryDeck runtime not ready — keep this app open';
+  statusLine.textContent = `${runtime} · platform ${data.platform}`;
+  grid.innerHTML = '';
+  for (const h of data.harnesses || []) {
+    if (h.manual) continue;
+    const card = document.createElement('div');
+    card.className = 'mcp-card';
+    const badgeClass = h.status === 'connected' ? 'connected' : (h.status === 'available' ? 'available' : 'not_installed');
+    card.innerHTML = `
+      <h3>${escHTML(h.name)}</h3>
+      <span class="mcp-badge ${badgeClass}">${escHTML(mcpStatusLabel(h.status))}</span>
+      <p>${escHTML(h.blurb || '')}</p>
+      <div class="mcp-card-actions"></div>`;
+    const actions = card.querySelector('.mcp-card-actions');
+    if (h.status === 'connected') {
+      const ok = document.createElement('span');
+      ok.className = 'mcp-badge connected';
+      ok.textContent = '✓ Configured';
+      actions.appendChild(ok);
+    } else if (h.status === 'available') {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'modal-save';
+      btn.textContent = 'Connect';
+      btn.onclick = () => connectMcpHarness(h.id);
+      actions.appendChild(btn);
+    } else if (h.status === 'not_installed') {
+      const span = document.createElement('span');
+      span.className = 'mcp-footnote';
+      span.textContent = 'Install the app first';
+      actions.appendChild(span);
+    }
+    grid.appendChild(card);
+  }
+  const manual = (data.harnesses || []).find((h) => h.manual);
+  if (manualBlock) {
+    manualBlock.hidden = false;
+    const ta = document.getElementById('mcp-manual-json');
+    if (ta && data.serverEntry) {
+      ta.value = JSON.stringify({ mcpServers: { storydeck: data.serverEntry } }, null, 2);
+    }
+  }
+}
+
+async function refreshMcpModal() {
+  const err = document.getElementById('mcp-err');
+  if (err) { err.hidden = true; err.textContent = ''; }
+  try {
+    const data = await api('/api/mcp/harnesses');
+    renderMcpHarnesses(data);
+  } catch (e) {
+    if (err) { err.hidden = false; err.textContent = e.message; }
+  }
+}
+
+function openMcpModal() {
+  document.getElementById('mcp-modal').classList.add('open');
+  refreshMcpModal();
+}
+function closeMcpModal() {
+  document.getElementById('mcp-modal').classList.remove('open');
+}
+
+async function connectMcpHarness(harnessId) {
+  const err = document.getElementById('mcp-err');
+  err.hidden = true; err.textContent = '';
+  try {
+    const data = await api('/api/mcp/connect', {
+      method: 'POST',
+      body: JSON.stringify({ harnessId }),
+    });
+    await refreshMcpModal();
+    showToast(data.restartHint || 'Connected — restart your AI app.', 6000);
+  } catch (e) {
+    err.hidden = false; err.textContent = e.message;
+  }
+}
+
+async function testMcpConnection() {
+  const err = document.getElementById('mcp-err');
+  err.hidden = true; err.textContent = '';
+  try {
+    const res = await fetch(API + '/api/mcp/test', { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Connection test failed');
+    showToast(`MCP ready · ${data.counts?.pending ?? '?'} pending stories · ${data.appVersion}`, 5000);
+  } catch (e) {
+    err.hidden = false; err.textContent = e.message;
+  }
+}
+
+async function copyMcpManual() {
+  const ta = document.getElementById('mcp-manual-json');
+  if (!ta?.value) return;
+  try {
+    await navigator.clipboard.writeText(ta.value);
+    showToast('MCP config copied to clipboard', 2500);
+  } catch {
+    ta.select();
+    document.execCommand('copy');
+    showToast('MCP config copied', 2500);
+  }
+}
+
 // ── view (board / dashboard) ────────────────────────────────────────────────
 const VIEW_KEY = 'storydeck-view';
 function setView(name) {
@@ -2383,7 +2542,7 @@ document.addEventListener('keydown', e => {
     document.getElementById('story-search').focus();
     return;
   }
-  if (e.key === 'Escape') { closeStatusMenu(); closeModal(); closeAiKeyModal(); closeShortcutsHelp(); cancelNote(); }
+  if (e.key === 'Escape') { closeStatusMenu(); closeModal(); closeAiKeyModal(); closeMcpModal(); closeShortcutsHelp(); cancelNote(); }
   if (e.key === 'n' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); openModal(); }
   if (e.key === '?' && !inField && !openSelect) { e.preventDefault(); toggleShortcutsHelp(); }
   if (!inField && !openSelect) {

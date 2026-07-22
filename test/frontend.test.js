@@ -83,7 +83,7 @@ test('modals expose accessible dialog semantics', () => {
   // marked as modal so screen readers announce them and focus tooling can trap.
   const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
   const dialogs = html.match(/<div class="modal"[^>]*>/g) || [];
-  assert.equal(dialogs.length, 3, 'expected three .modal dialogs');
+  assert.equal(dialogs.length, 4, 'expected four .modal dialogs (story, ai-key, mcp, help)');
   for (const tag of dialogs) {
     assert.match(tag, /role="dialog"/);
     assert.match(tag, /aria-modal="true"/);
@@ -202,6 +202,15 @@ test('ask bar has an AI provider status chip wired to the key modal', () => {
   const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
   assert.match(html, /id="ai-status"[^>]*onclick="openAiKeyModal\(\)"/);
   assert.match(html, /function refreshAiStatusBadge\(/);
+});
+
+test('Connect AI button opens universal MCP connector modal', () => {
+  const html = readFileSync(join(ROOT, 'web', 'index.html'), 'utf8');
+  assert.match(html, /id="mcp-connect-btn"/);
+  assert.match(html, /Connect AI/);
+  assert.match(html, /id="mcp-modal"/);
+  assert.match(html, /openMcpModal\(\)/);
+  assert.match(html, /\/api\/mcp\/harnesses/);
 });
 
 test('statePatch maps sprint states to API patches', () => {

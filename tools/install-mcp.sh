@@ -74,4 +74,4 @@ console.log('');
 console.log('Restart Cursor, then open StoryDeck before using MCP tools.');
 NODE
 
-echo "Done. If StoryDeck is already running, quit and reopen it once after upgrading to v1.2."
+echo "Done. Prefer the in-app Connect AI button (header) — or restart Cursor if you used this script."

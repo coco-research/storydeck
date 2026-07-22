@@ -172,22 +172,21 @@ key itself.
 
 ## Connect Cursor (MCP) — v1.2+
 
-StoryDeck exposes a **local MCP server** so Cursor can read and update your live
+StoryDeck exposes a **local MCP server** so external AI apps can read and update your live
 board while the app is running. Everything stays on loopback — no cloud sync.
+
+**In the app (v1.3+):** click **Connect AI** in the header → pick your harness (Cursor,
+Claude Desktop, …) → **Connect** in one click → restart that AI app once.
 
 **Requirements:** StoryDeck **v1.2.0+** installed and running.
 
-1. **One-time setup** (after installing v1.2):
+Legacy one-time setup (optional):
 
-   ```bash
-   ./tools/install-mcp.sh
-   ```
+```bash
+./tools/install-mcp.sh
+```
 
-   This merges a `storydeck` entry into `~/.cursor/mcp.json`. Restart Cursor.
-
-2. **Use it:** Open StoryDeck, then in Cursor ask to list or update your board.
-   MCP tools include `storydeck_list`, `storydeck_create`, `storydeck_complete`,
-   and more.
+MCP tools include `storydeck_list`, `storydeck_create`, `storydeck_complete`, and more.
 
 **Dev mode** (`npm start`): the installer detects no `/Applications/StoryDeck.app`
 and points MCP at this repo with system `node`. Override the API URL with

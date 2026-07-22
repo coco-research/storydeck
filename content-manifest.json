@@ -2,8 +2,8 @@
   "appVersion": "1.2.0",
   "contentVersion": 1784745544,
   "channel": "stable",
-  "commit": "a2990cb",
-  "generatedAt": "2026-07-22T18:39:04.867Z",
+  "commit": "a5dfdbd",
+  "generatedAt": "2026-07-22T18:39:26.241Z",
   "repo": "coco-research/storydeck-content",
   "files": {
     "web/index.html": "534e96602140e8cca7a8c6237888ad724407d438674032a8036954ee25c79f77",

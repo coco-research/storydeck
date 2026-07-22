@@ -81,8 +81,8 @@ test('package.json unpacks MCP assets from asar', () => {
   assert.ok(packageJson.build.asarUnpack.some((p) => p.includes('src/mcp')));
 });
 
-test('package.json version is 1.2.x for MCP release', () => {
-  assert.match(packageJson.version, /^1\.2\./);
+test('package.json version is 1.3.x for MCP connector release', () => {
+  assert.match(packageJson.version, /^1\.3\./);
 });
 
 test('package.json includes MCP SDK dependency', () => {

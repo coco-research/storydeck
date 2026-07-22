@@ -10,7 +10,7 @@ import { callTool } from './tools.js';
 
 const mcp = new McpServer({
   name: 'storydeck',
-  version: '1.2.0',
+  version: '1.3.0',
 });
 
 const optionalString = z.string().optional();

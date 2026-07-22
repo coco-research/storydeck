@@ -35,6 +35,7 @@ import { health as aiHealth } from './ai/providers.js';
 import { saveConfig as saveAiKey, applyConfigToEnv } from './ai/keystore.js';
 import { versionInfo } from './version.js';
 import { writeRuntimeFile, runtimeDirFromDbPath, resolveRuntimePath } from './runtime.js';
+import { listHarnesses, connectHarness, manualSnippet, testMcpConnection } from './mcp/connector.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -135,6 +136,35 @@ async function handleApi(db, req, res, path, url) {
       if (err instanceof AIError) return sendJSON(res, err.status || 400, { error: err.message });
       return sendJSON(res, 400, { error: err.message });
     }
+  }
+
+  // GET /api/mcp/harnesses → detect installed AI apps + connection status
+  if (path === '/api/mcp/harnesses' && method === 'GET') {
+    return sendJSON(res, 200, listHarnesses());
+  }
+
+  // GET /api/mcp/manual → copy-paste JSON for unsupported harnesses
+  if (path === '/api/mcp/manual' && method === 'GET') {
+    return sendJSON(res, 200, { snippet: manualSnippet() });
+  }
+
+  // POST /api/mcp/connect → one-click register StoryDeck in a harness config
+  if (path === '/api/mcp/connect' && method === 'POST') {
+    const body = await readBody(req);
+    const harnessId = String(body?.harnessId || '').trim();
+    if (!harnessId) return sendJSON(res, 400, { error: 'harnessId is required' });
+    try {
+      const result = connectHarness(harnessId);
+      return sendJSON(res, 200, result);
+    } catch (err) {
+      return sendJSON(res, 400, { error: err.message });
+    }
+  }
+
+  // POST /api/mcp/test → verify runtime + live board reachable
+  if (path === '/api/mcp/test' && method === 'POST') {
+    const result = await testMcpConnection();
+    return sendJSON(res, result.ok ? 200 : 503, result);
   }
 
   // GET /api/export → export payload
